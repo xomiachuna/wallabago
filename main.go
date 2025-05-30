@@ -2,142 +2,31 @@ package main
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"log/slog"
+	"net"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
 	"time"
+
+	"go.opentelemetry.io/contrib/bridges/otelslog"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
-type Id string
-
-type Image struct {
-	Name string
-	Data []byte
-}
-
-type PageContent struct {
-	Title  string
-	Body   string // todo - separate paragraphs?
-	Images []Image
-}
-
-type Url string
-
-type Entry struct {
-	Url         Url
-	Review      string
-	Annotations []Annotation
-	Metadata    Metadata
-	Favorite    bool
-	Archived    bool
-	Id          Id
-	Content     PageContent
-}
-
-type Metadata struct {
-	Author string
-}
-
-type AnnotationId string
-
-type Annotation struct {
-	Id   AnnotationId
-	Text string
-}
-
-type PageRetrievealEngine interface {
-	Retrive(context.Context, Url) (*PageContent, error)
-}
-
-type EntryStorage interface {
-	Add(context.Context, Entry) (*Entry, error)
-	Get(context.Context, Id) (*Entry, error)
-	Update(context.Context, Entry) (*Entry, error)
-	Delete(context.Context, Id) error
-}
-
-type Epub []byte // TODO
-
-type EpubConversionEngine interface {
-	ConvertToEpub(context.Context, Entry) (*Epub, error)
-}
-
-type ConversionEngine interface {
-	EpubConversionEngine
-}
-
-type EntryManager struct {
-	retrieval    PageRetrievealEngine
-	entryStorage EntryStorage
-}
-
-type ReadabilityPageRetrievalEngine struct{}
-
-func (e *ReadabilityPageRetrievalEngine) Retrive(context.Context, Url) (*PageContent, error) {
-	panic("sike")
-}
-
-type SimpleEntryStorage struct{}
-
-func (a *SimpleEntryStorage) Add(context.Context, Entry) (*Entry, error) {
-	panic("sike")
-}
-
-func (a *SimpleEntryStorage) Get(context.Context, Id) (*Entry, error) {
-	panic("sike")
-}
-
-func (a *SimpleEntryStorage) Update(context.Context, Entry) (*Entry, error) {
-	panic("sike")
-}
-
-func (a *SimpleEntryStorage) Delete(context.Context, Id) error {
-	panic("sike")
-}
-
-func NewEntryManager() *EntryManager {
-	return &EntryManager{
-		retrieval:    &ReadabilityPageRetrievalEngine{},
-		entryStorage: &SimpleEntryStorage{},
-	}
-}
-
-// Add retrieves the contents of the page and saves it
-func (m *EntryManager) Add(ctx context.Context, entry Entry) (*Entry, error) {
-	content, err := m.retrieval.Retrive(ctx, entry.Url)
-	if err != nil {
-		return nil, err
-	}
-	entry.Content = *content
-	result, err := m.entryStorage.Add(ctx, entry)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
-const loggerKey = 777
-
-func WithLogger(ctx context.Context, logger *slog.Logger) context.Context {
-	return context.WithValue(ctx, loggerKey, logger)
-}
-
-func LoggerFromContext(ctx context.Context) *slog.Logger {
-	if logger, ok := ctx.Value(loggerKey).(*slog.Logger); ok {
-		return logger
-	}
-	return slog.Default()
-}
-
 func writeJSON(ctx context.Context, w http.ResponseWriter, value any, status int) error {
-	logger := LoggerFromContext(ctx)
+    ctx, span := tracer.Start(ctx, "write-json")
+    defer span.End()
 	body, err := json.Marshal(value)
 	if err != nil {
-		logger.Error("Failed to marshal JSON", "value", value, "error", err)
+		logger.ErrorContext(ctx, "Failed to marshal JSON", "value", value, "error", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprint(w, err)
 		return err
@@ -146,127 +35,110 @@ func writeJSON(ctx context.Context, w http.ResponseWriter, value any, status int
 	w.WriteHeader(status)
 	_, err = w.Write(body)
 	if err != nil {
-		logger.Error("Failed to write JSON body", "body", body, "error", err)
+		logger.ErrorContext(ctx, "Failed to write JSON body", "body", body, "error", err)
 	} else {
-		logger.Info("Sending JSON Response", "body", body)
+		logger.InfoContext(ctx, "Sending JSON Response", "body", body)
 	}
 	return err
 }
 
-type User struct {
-	Name    string
-	IsAdmin bool
-}
+var otelScopeName = "xomiachuna.com/wallabago-api"
+var otelScopeVersion = "0.0.1"
+var tracer = otel.Tracer(otelScopeName, trace.WithInstrumentationVersion(otelScopeVersion))
+var logger = otelslog.NewLogger(
+    otelScopeName, 
+    otelslog.WithVersion(otelScopeVersion),
+)
+var authTracer = otel.Tracer(fmt.Sprintf("%s/auth", otelScopeName), trace.WithInstrumentationVersion(otelScopeVersion))
 
-type Token struct{}
-
-type Permission string
-
-type BasicAuthnToken string
-
-type AuthenticationEngine interface {
-	BasicAuthn(context.Context, BasicAuthnToken) (User, error)
-}
-
-type HardcodedAuthnEngine struct {
-	username, password string
-}
-
-type ErrInvalidCredentials struct{}
-
-func (e *ErrInvalidCredentials) Error() string {
-	return "Invalid credentials"
-}
-
-func (e *HardcodedAuthnEngine) BasicAuthn(ctx context.Context, token BasicAuthnToken) (User, error) {
-	decoded, err := base64.StdEncoding.DecodeString(string(token))
-	if err != nil {
-		return User{}, err
-	}
-
-	parts := strings.Split(string(decoded), ":")
-	if len(parts) != 2 {
-		return User{}, fmt.Errorf("Not a valid token")
-	}
-	if parts[0] == e.username && parts[1] == e.password {
-		return User{Name: parts[0], IsAdmin: true}, nil
-	}
-	return User{}, &ErrInvalidCredentials{}
-}
-
-type AuthorizationEngine interface {
-	HasPermissions(context.Context, User, []Permission) (bool, error)
-}
-
-type AuthEngine interface {
-	AuthenticationEngine
-	AuthorizationEngine
-}
-
-func RequestLogger(w http.ResponseWriter, r *http.Request) (context.Context, *slog.Logger) {
-	logger := LoggerFromContext(r.Context()).With(
-		"method", r.Method,
-		"url", r.URL,
-		"host", r.Host,
-		"remote_addr", r.RemoteAddr,
-	)
-	ctx := WithLogger(r.Context(), logger)
-	return ctx, logger
-}
-
-func setupServer() *http.Server {
+func setupServer(baseCtx context.Context) *http.Server {
+	ctx, span := tracer.Start(baseCtx, "handler-setup")
+	defer span.End()
 	mux := http.DefaultServeMux
-	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) { // exact match
-		ctx, logger := RequestLogger(w, r)
-		logger.Info("Handling request", "page", r.URL, "method", r.Method)
-		start := time.Now()
+	handleWithOtel := func(pattern string, innerHandler func(w http.ResponseWriter, r *http.Request)) {
+		mux.Handle(pattern, otelhttp.NewHandler(http.HandlerFunc(innerHandler), pattern))
+	}
+
+	handleWithOtel("GET /{$}", func(w http.ResponseWriter, r *http.Request) { // exact match
+		logger.InfoContext(r.Context(), "Handling request", "page", r.URL, "method", r.Method)
 		time.Sleep(1000 * time.Millisecond)
-		duration := time.Since(start)
-		w.Header().Add("Server-Timing", fmt.Sprintf(`handler;desc="time spend inside handler";dur=%f`, float64(duration.Microseconds())/1e3))
-		writeJSON(ctx, w, &map[string]string{"hello": "world"}, http.StatusOK)
+		writeJSON(r.Context(), w, &map[string]string{"hello": "world"}, http.StatusOK)
 	})
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { // anything else
+	handleWithOtel("/", func(w http.ResponseWriter, r *http.Request) { // anything else
 		slog.Warn("Page not found", "page", r.URL)
 		http.NotFound(w, r)
 	})
-	mux.HandleFunc("GET /protected", func(w http.ResponseWriter, r *http.Request) { // anything else
-		ctx, logger := RequestLogger(w, r)
+	handleWithOtel("GET /protected", func(w http.ResponseWriter, r *http.Request) { // anything else
+		ctx, span := tracer.Start(r.Context(), "auth_check")
+		defer span.End()
+		logger.InfoContext(ctx, "Handling request", "page", r.URL, "method", r.Method)
 		var engine AuthenticationEngine = &HardcodedAuthnEngine{
 			username: "admin",
 			password: "password",
 		}
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
+			span.SetStatus(codes.Error, "missing_auth_header")
+			span.AddEvent("initiate_basic_auth")
 			w.Header().Set("www-authenticate", "Basic")
 			writeJSON(ctx, w, &map[string]string{"error": "unauthorized"}, http.StatusUnauthorized)
-			logger.Info("Unauthorized", "cause", "missing_auth_header")
+			logger.InfoContext(ctx, "Unauthorized", "cause", "missing_auth_header")
+			return
 		} else if strings.HasPrefix(authHeader, "Basic ") {
 			token, _ := strings.CutPrefix(authHeader, "Basic ")
 			user, err := engine.BasicAuthn(ctx, BasicAuthnToken(token))
 			if err != nil {
 				w.Header().Set("www-authenticate", "Basic")
 				writeJSON(ctx, w, &map[string]string{"error": "unauthorized"}, http.StatusUnauthorized)
-				logger.Info("Unauthorized", "cause", "authn_error", "detail", err)
+				logger.InfoContext(ctx, "Unauthorized", "cause", "authn_error", "detail", err)
+				span.SetStatus(codes.Error, err.Error())
 				return
 			}
 			writeJSON(ctx, w, user, http.StatusOK)
-			logger.Info("Visited protected page", "user", user, "page", r.URL)
+			logger.InfoContext(ctx, "Visited protected page", "user", user, "page", r.URL)
+			span.SetStatus(http.StatusOK, "")
 		} else {
 			w.Header().Set("www-authenticate", "Basic")
 			writeJSON(ctx, w, &map[string]string{"error": "unauthorized"}, http.StatusUnauthorized)
-			logger.Info("Unauthorized", "cause", "missing_auth_header")
+			logger.InfoContext(ctx, "Unauthorized", "cause", "missing_auth_header")
+			span.SetStatus(codes.Error, "missing basic auth header")
 		}
 
 	})
 	server := &http.Server{
-		Handler: mux,
-		Addr:    ":9999",
+		Handler:     mux,
+		Addr:        ":9999",
+		BaseContext: func(_ net.Listener) context.Context { return baseCtx },
 	}
-	slog.Default().Info("Created server", "addr", server.Addr)
+	logger.InfoContext(ctx, "Created server", "addr", server.Addr)
 	return server
 }
 
 func main() {
-	server := setupServer()
-	log.Fatalln(server.ListenAndServe())
+	ctx, stopSignalHandler := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stopSignalHandler()
+	shutdown, err := setupOtelSdk(ctx)
+	if err != nil {
+		log.Fatalf("failed to setup otel: %w", err)
+	}
+	defer func() {
+		// print all the errors and exit
+		err = errors.Join(shutdown(ctx))
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	server := setupServer(ctx)
+	serverErr := make(chan error, 1)
+	go func(serverErr chan<- error) {
+		serverErr <- server.ListenAndServe()
+	}(serverErr)
+	select {
+	case err = <-serverErr:
+		return
+	case <-ctx.Done():
+		stopSignalHandler()
+		server.Shutdown(context.Background())
+	}
 }
