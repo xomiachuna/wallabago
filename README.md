@@ -1,17 +1,3 @@
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-
-- [wallabago - an implementation of Wallabag in golang](#wallabago---an-implementation-of-wallabag-in-golang)
-  - [Development](#development)
-    - [Setup](#setup)
-  - [Documentation](#documentation)
-    - [ADRs](#adrs)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
 # wallabago - an implementation of Wallabag in golang
 
 ## Development
