@@ -6,6 +6,10 @@ Date: 2025-07-11
 
 Accepted
 
+Influences [2. Use PlantUML for diagrams](0002-use-plantuml-for-diagrams.md)
+
+Influences [2. Use PlantUML for diagrams](0002-use-plantuml-for-diagrams.md)
+
 ## Context
 
 We need to document various architectural descisions taken
