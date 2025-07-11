@@ -33,4 +33,9 @@ lint: format
 
 .PHONY: format
 format:
-	@go fmt ./...
+	@docker run --rm -t -v $$(pwd):/app -w /app \
+		-e GOCACHE=/.cache/go-build \
+		-e GOMODCACHE=/.cache/mod \
+		-e GOLANGCI_LINT_CACHE=/.cache/golangci-lint \
+		-v ~/.cache/golagci-lint-docker:/.cache \
+		golangci/golangci-lint:v2.2.2 golangci-lint fmt
