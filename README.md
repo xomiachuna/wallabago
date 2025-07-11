@@ -5,13 +5,11 @@
 This project requires `go>=1.24`.
 
 This project uses [`lefthook`](https://github.com/evilmartians/lefthook) in order
-to run pre-commit hooks defined in [`lefthook.yml`](./lefthook.yml). It can be ran via 
-`go tool lefthook`.
+to run pre-commit hooks defined in [`lefthook.yml`](./lefthook.yml). 
 
-Run the following in order to make sure that your local env has `lefthook` installed 
-and configured:
+Run the following in order to make sure that your local env has everything configured:
 ```
-go tool lefthook install && go tool lefthook run pre-commit
+make
 ```
 
 ## Documentation
