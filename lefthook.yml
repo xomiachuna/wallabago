@@ -1,4 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/evilmartians/lefthook/master/schema.json
+no_tty: true
+colors: false
 pre-commit:
   parallel: true
   jobs:
@@ -28,6 +30,5 @@ pre-commit:
       glob: "*.go"
 
     - name: govet
-      files: git ls-files -m
       glob: "*.go"
-      run: go vet {files}
+      run: go vet ./...
