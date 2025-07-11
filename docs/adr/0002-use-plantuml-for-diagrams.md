@@ -8,6 +8,8 @@ Accepted
 
 Influenced by [1. Use ADRs to document architecture decisions](0001-use-adrs-to-document-architecture-decisions.md)
 
+Influences [3. Use pre-commit hooks](0003-use-pre-commit-hooks.md)
+
 ## Context
 
 There is a need to keep track of certain diagrams (Entity Relationship,

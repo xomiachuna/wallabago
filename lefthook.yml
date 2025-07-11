@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/evilmartians/lefthook/master/schema.json
+pre-commit:
+  parallel: true
+  jobs:
+    - name: adrs
+      group:
+        parallel: false
+        jobs:
+          - name: generate-adr-toc
+            glob: "docs/adr/*.md"
+            exclude: 
+              - "docs/adr/README.md"
+            run: >-
+              ./tools/adr.sh \
+                generate toc \
+                -i /doc/adr/intro.template.md \
+                > docs/adr/README.md
+          - name: generate-adr-graph
+            glob: "docs/adr/*.md"
+            exclude: 
+              - "docs/adr/README.md"
+            run: >-
+              ./tools/adr.sh generate graph \
+                | docker run --rm -i nshine/dot dot -Tpng -Gdpi=300 \
+                > docs/adr/adr.png
+    - name: format
+      run: go fmt ./...
+      glob: "*.go"
+
+    - name: govet
+      files: git ls-files -m
+      glob: "*.go"
+      run: go vet {files}
