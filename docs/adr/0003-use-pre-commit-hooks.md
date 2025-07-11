@@ -4,7 +4,7 @@ Date: 2025-07-11
 
 ## Status
 
-Proposed
+Accepted
 
 Influenced by [2. Use PlantUML for diagrams](0002-use-plantuml-for-diagrams.md)
 
@@ -25,7 +25,8 @@ There are tools that allow to declare the hooks that need to be ran: `pre-commit
 `lefthook`, `huskey` etc.
 They have similar features, different configurations and ecosystems surrounding them.
 
-We need to balance the features with simplicity and reliability.
+We need to balance the features with simplicity and reliability. Tooling may assume
+Unix environment with Docker, `make` and `go` toolchain available.
 
 ## Decision
 
@@ -34,4 +35,10 @@ We will use [lefthook](https://github.com/evilmartians/lefthook) bundled as a
 
 ## Consequences
 
-> TODO
+Now by default the commits will be verified by running the hooks. This might incur some
+slowdown in the dev process as it will require running a couple of tools (likely in docker)
+but since this will only happen a few times a day - it should not be too overwhelming.
+
+This synergises well with [`Makefile`](../../Makefile) and can be easily extended.
+Hooks may be made to run only a subset of the checks available, whereas `Makefile`
+might contain heavier workloads that are not necessarily part of the commit process.
