@@ -1,4 +1,5 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/evilmartians/lefthook/master/schema.json
+colors: false
 pre-commit:
   jobs:
     - name: adrs
@@ -22,3 +23,7 @@ pre-commit:
     - name: lint
       run: make lint
       glob: "*.go"
+
+    - name: md-lint
+      run: make md-lint
+      glob: "*.md"

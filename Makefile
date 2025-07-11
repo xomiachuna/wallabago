@@ -7,7 +7,7 @@ default:
 check: adr lint
 
 .PHONY: adr
-adr: generate-adr-graph generate-adr-toc
+adr: generate-adr-toc generate-adr-graph 
 
 .PHONY: generate-adr-graph
 generate-adr-graph:
@@ -39,3 +39,7 @@ format:
 		-e GOLANGCI_LINT_CACHE=/.cache/golangci-lint \
 		-v ~/.cache/golagci-lint-docker:/.cache \
 		golangci/golangci-lint:v2.2.2 golangci-lint fmt
+
+.PHONY: md-lint
+md-lint: 
+	@docker run --rm -v $$(pwd):/src letompouce/mdformat --wrap 80 .
