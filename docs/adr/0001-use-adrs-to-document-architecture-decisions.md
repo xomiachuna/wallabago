@@ -28,4 +28,4 @@ easily digestible documents in a format that is both easy to read (for humans
 and machines) and author.
 
 In order to help with authoring and managing ADRs - a helper script is provided (see
-[`tools/adr.sh`](../tools/adr.sh) and [`adr-tools` repo](https://github.com/npryce/adr-tools))
+[`tools/adr.sh`](../../tools/adr.sh) and [`adr-tools` repo](https://github.com/npryce/adr-tools))
