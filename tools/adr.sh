@@ -1,7 +1,6 @@
 #!/bin/bash
 
-docker run --rm -it \
-    --name adr-tools \
+docker run --rm \
     -v `pwd`/docs:/doc \
     rdhaliwal/adr-tools \
     adr "$@"
