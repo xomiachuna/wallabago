@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"log/slog"
 	"net"
@@ -12,24 +11,16 @@ import (
 	"os"
 	"os/signal"
 	"strings"
-	"time"
 
-	"go.opentelemetry.io/contrib/bridges/otelslog"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/trace"
 )
 
-func writeJSON(ctx context.Context, w http.ResponseWriter, value any, status int) error {
-    ctx, span := tracer.Start(ctx, "write-json")
-    defer span.End()
+func writeJSON[T any](ctx context.Context, w http.ResponseWriter, value T, status int) error {
+	ctx, span := tracer.Start(ctx, "write-json")
+	defer span.End()
 	body, err := json.Marshal(value)
 	if err != nil {
-		logger.ErrorContext(ctx, "Failed to marshal JSON", "value", value, "error", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(w, err)
-		return err
+        panic(err)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -37,39 +28,33 @@ func writeJSON(ctx context.Context, w http.ResponseWriter, value any, status int
 	if err != nil {
 		logger.ErrorContext(ctx, "Failed to write JSON body", "body", body, "error", err)
 	} else {
-		logger.InfoContext(ctx, "Sending JSON Response", "body", body)
+		logger.DebugContext(ctx, "Sending JSON Response", "body", body)
 	}
 	return err
 }
 
-var otelScopeName = "xomiachuna.com/wallabago-api"
-var otelScopeVersion = "0.0.1"
-var tracer = otel.Tracer(otelScopeName, trace.WithInstrumentationVersion(otelScopeVersion))
-var logger = otelslog.NewLogger(
-    otelScopeName, 
-    otelslog.WithVersion(otelScopeVersion),
-)
-var authTracer = otel.Tracer(fmt.Sprintf("%s/auth", otelScopeName), trace.WithInstrumentationVersion(otelScopeVersion))
+type indexResponse struct {
+    Page string `json:"page"`
+    Data string `json:"data,omitempty"`
+}
 
 func setupServer(baseCtx context.Context) *http.Server {
+    middleware := setupMiddleware()
 	ctx, span := tracer.Start(baseCtx, "handler-setup")
 	defer span.End()
 	mux := http.DefaultServeMux
-	handleWithOtel := func(pattern string, innerHandler func(w http.ResponseWriter, r *http.Request)) {
-		mux.Handle(pattern, otelhttp.NewHandler(http.HandlerFunc(innerHandler), pattern))
-	}
 
-	handleWithOtel("GET /{$}", func(w http.ResponseWriter, r *http.Request) { // exact match
+	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) { // exact match
 		logger.InfoContext(r.Context(), "Handling request", "page", r.URL, "method", r.Method)
-		time.Sleep(1000 * time.Millisecond)
-		writeJSON(r.Context(), w, &map[string]string{"hello": "world"}, http.StatusOK)
+		// time.Sleep(1000 * time.Millisecond)
+		writeJSON(r.Context(), w, indexResponse{Page: r.URL.String()}, http.StatusOK)
 	})
-	handleWithOtel("/", func(w http.ResponseWriter, r *http.Request) { // anything else
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { // anything else
 		slog.Warn("Page not found", "page", r.URL)
 		http.NotFound(w, r)
 	})
-	handleWithOtel("GET /protected", func(w http.ResponseWriter, r *http.Request) { // anything else
-		ctx, span := tracer.Start(r.Context(), "auth_check")
+	mux.HandleFunc("GET /protected", func(w http.ResponseWriter, r *http.Request) { // anything else
+		ctx, span := tracer.Start(r.Context(), "auth-check")
 		defer span.End()
 		logger.InfoContext(ctx, "Handling request", "page", r.URL, "method", r.Method)
 		var engine AuthenticationEngine = &HardcodedAuthnEngine{
@@ -83,7 +68,6 @@ func setupServer(baseCtx context.Context) *http.Server {
 			w.Header().Set("www-authenticate", "Basic")
 			writeJSON(ctx, w, &map[string]string{"error": "unauthorized"}, http.StatusUnauthorized)
 			logger.InfoContext(ctx, "Unauthorized", "cause", "missing_auth_header")
-			return
 		} else if strings.HasPrefix(authHeader, "Basic ") {
 			token, _ := strings.CutPrefix(authHeader, "Basic ")
 			user, err := engine.BasicAuthn(ctx, BasicAuthnToken(token))
@@ -94,6 +78,8 @@ func setupServer(baseCtx context.Context) *http.Server {
 				span.SetStatus(codes.Error, err.Error())
 				return
 			}
+			span.End()
+			// time.Sleep(time.Millisecond * 100)
 			writeJSON(ctx, w, user, http.StatusOK)
 			logger.InfoContext(ctx, "Visited protected page", "user", user, "page", r.URL)
 			span.SetStatus(http.StatusOK, "")
@@ -103,10 +89,9 @@ func setupServer(baseCtx context.Context) *http.Server {
 			logger.InfoContext(ctx, "Unauthorized", "cause", "missing_auth_header")
 			span.SetStatus(codes.Error, "missing basic auth header")
 		}
-
 	})
 	server := &http.Server{
-		Handler:     mux,
+		Handler:     middleware.wrap(mux),
 		Addr:        ":9999",
 		BaseContext: func(_ net.Listener) context.Context { return baseCtx },
 	}

@@ -36,6 +36,7 @@ func (e *ErrInvalidCredentials) Error() string {
 
 func (e *HardcodedAuthnEngine) BasicAuthn(ctx context.Context, token BasicAuthnToken) (User, error) {
 	ctx, span := authTracer.Start(ctx, "basic-auth")
+    // time.Sleep(time.Millisecond * 100)
 	defer span.End()
 	decoded, err := base64.StdEncoding.DecodeString(string(token))
 	if err != nil {
