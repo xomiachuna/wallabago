@@ -1,6 +1,41 @@
 services:
+  migrations:
+    image: migrate/migrate:v4.18.3
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ../../internal/migrations/:/migrations
+    environment:
+      DB: "postgresql://wallabago-api:wallabago@postgres:5432/wallabago-db?sslmode=disable"
+    entrypoint: ["/bin/sh", "-c", "migrate -path=/migrations/ -database $$DB up"]
+
   wallabago:
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
     build: ../../
     restart: no
+    environment:
+      DB: "postgresql://wallabago-api:wallabago@postgres:5432/wallabago-db?sslmode=disable"
     ports:
       - 7080:8080
+
+  postgres:
+    image: postgres:17
+    ports:
+      - 25432:5432
+    environment:
+      POSTGRES_USER: wallabago-api
+      POSTGRES_PASSWORD: wallabago
+      POSTGRES_DB: wallabago-db
+    healthcheck:
+      # we use CMD-SHELL with sh in order to allow string interpolation
+      test: ["CMD-SHELL", "sh -c 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}'"]
+      start_interval: 1s
+      start_period: 5s
+      timeout: 5s
+      interval: 10s
+      retries: 10
