@@ -1,0 +1,6 @@
+services:
+  wallabago:
+    build: ../../
+    restart: no
+    ports:
+      - 7080:8080

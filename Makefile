@@ -43,3 +43,11 @@ format:
 .PHONY: md-lint
 md-lint: 
 	@docker run --rm -v $$(pwd):/src letompouce/mdformat --wrap 80 .
+
+.PHONY: up
+up:
+	@docker compose -f deployments/docker-compose/docker-compose.yaml up
+
+.PHONY: down
+down:
+	@docker compose -f deployments/docker-compose/docker-compose.yaml down
