@@ -34,6 +34,5 @@ We will use a standalone migration container.
 
 Migrations need to be implemented in backwards-compatible manner. Potentially
 breaking changes need to be planned ahead and guarder off with a feature flag.
-The application startup process is now slower if it includes schema changes. An
-additional dependency on migrate/migrate increases the surface area of the
+An additional dependency on migrate/migrate increases the surface area of the
 stack, making the setup potentially more brittle.
