@@ -7,7 +7,7 @@ default:
 check: adr lint
 
 .PHONY: adr
-adr: generate-adr-toc generate-adr-graph 
+adr: format generate-adr-toc generate-adr-graph 
 
 .PHONY: generate-adr-graph
 generate-adr-graph:

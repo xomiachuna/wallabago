@@ -2,6 +2,10 @@
 colors: false
 pre-commit:
   jobs:
+    - name: md-lint
+      run: make md-lint
+      glob: "*.md"
+
     - name: adrs
       group:
         parallel: false
@@ -16,6 +20,7 @@ pre-commit:
             glob: "docs/adr/*.md"
             run: >-
               make generate-adr-graph
+
     - name: format
       run: make format
       glob: "*.go"
@@ -24,6 +29,3 @@ pre-commit:
       run: make lint
       glob: "*.go"
 
-    - name: md-lint
-      run: make md-lint
-      glob: "*.md"
