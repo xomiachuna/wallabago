@@ -48,8 +48,12 @@ format:
 
 .PHONY: up
 up:
-	@docker compose -f deployments/docker-compose/docker-compose.yaml up
+	@docker compose \
+		-f deployments/docker-compose/docker-compose.yaml \
+		up --build --force-recreate
 
 .PHONY: down
 down:
-	@docker compose -f deployments/docker-compose/docker-compose.yaml down
+	@docker compose \
+		-f deployments/docker-compose/docker-compose.yaml \
+		down 

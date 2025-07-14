@@ -5,4 +5,5 @@ pre-commit:
   jobs:
     - name: check-quick
       run: make check-quick
+      stage_fixed: true
 

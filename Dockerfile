@@ -20,7 +20,7 @@ COPY . /app/
 # build an executable with race detection and embed vcs info
 # and then compress it with upx
 RUN CGOENABLED=1 GOOS=linux \
-    go build \
+    go build -C cmd/wallabago-api \
         -o /app/server \
         -race \
         -buildvcs=true && \
