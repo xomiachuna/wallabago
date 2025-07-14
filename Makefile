@@ -1,13 +1,18 @@
 .PHONY: default 
-default: 
-	@# run check rule with max parallelism
-	@$(MAKE) -j --no-print-directory check
+default: check
 
 .PHONY: check 
-check: adr lint
+check: adr md-lint format lint 
+
+.PHONY: check-quick
+check-quick: adr md-lint format lint 
+
+.PHONY: md-lint
+md-lint: 
+	@docker run --rm -v $$(pwd):/src letompouce/mdformat --wrap 80 .
 
 .PHONY: adr
-adr: format generate-adr-toc generate-adr-graph 
+adr: generate-adr-toc generate-adr-graph 
 
 .PHONY: generate-adr-graph
 generate-adr-graph:
@@ -40,9 +45,6 @@ format:
 		-v ~/.cache/golagci-lint-docker:/.cache \
 		golangci/golangci-lint:v2.2.2 golangci-lint fmt
 
-.PHONY: md-lint
-md-lint: 
-	@docker run --rm -v $$(pwd):/src letompouce/mdformat --wrap 80 .
 
 .PHONY: up
 up:

@@ -1,31 +1,8 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/evilmartians/lefthook/master/schema.json
-colors: false
+colors: true
+no_tty: true
 pre-commit:
   jobs:
-    - name: md-lint
-      run: make md-lint
-      glob: "*.md"
-
-    - name: adrs
-      group:
-        parallel: false
-        jobs:
-          - name: generate-adr-toc
-            glob: "docs/adr/*.md"
-            exclude: 
-              - "docs/adr/README.md"
-            run: >-
-              make generate-adr-toc
-          - name: generate-adr-graph
-            glob: "docs/adr/*.md"
-            run: >-
-              make generate-adr-graph
-
-    - name: format
-      run: make format
-      glob: "*.go"
-
-    - name: lint
-      run: make lint
-      glob: "*.go"
+    - name: check-quick
+      run: make check-quick
 
