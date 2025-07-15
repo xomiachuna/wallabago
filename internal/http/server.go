@@ -1,14 +1,30 @@
 package http
 
-import "log/slog"
+import (
+	"log/slog"
 
-type Server struct{}
+	"github.com/andriihomiak/wallabago/internal/instrumentation"
+)
+
+type Config struct {
+	Port            int
+	Instrumentation instrumentation.Config
+}
+
+type Server struct {
+	Config Config
+}
 
 func (s *Server) Start() error {
+	instrumentation.Instrument(s.Config.Instrumentation)
 	slog.Info("Starting server")
 	return nil
 }
 
 func NewServer() (*Server, error) {
-	return &Server{}, nil
+	return &Server{
+		Config{
+			Port: 7080,
+		},
+	}, nil
 }
