@@ -1,4 +1,4 @@
-@startuml fetch-entry
+@startuml fetch-entry-activity
 skinparam dpi 200
 header activity
 title Fetch Entry

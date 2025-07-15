@@ -2,4 +2,4 @@
 
 ## Add entry
 
-![Add entry](./diagrams/dist/add-entry.svg)
+![Add entry](./diagrams/dist/add-entry-activity.svg)

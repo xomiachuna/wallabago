@@ -1,4 +1,4 @@
-@startuml auth
+@startuml auth-activity
 skinparam dpi 200
 header activity
 title Check Auth for given action
@@ -6,9 +6,9 @@ title Check Auth for given action
 start
 :User provides **credentials**
 and the **intended action**;
-[[authn.activity.svg]]#yellow:Check if credentials\npass AuthN;
+[[authn-activity.svg]]#yellow:Check if credentials\npass AuthN;
 if (Pass?) then (yes)
-    [[authz.activity.svg]]#yellow:Check if user\npasses AuthZ;
+    [[authz-activity.svg]]#yellow:Check if user\npasses AuthZ;
     if (Pass?) then (yes)
     else (no)
         #red:Action forbidden;

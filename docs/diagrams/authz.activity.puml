@@ -1,4 +1,4 @@
-@startuml authz
+@startuml authz-activity
 skinparam dpi 200
 header activity
 title Check if user passes\nAuthZ for action

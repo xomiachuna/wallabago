@@ -1,10 +1,10 @@
-@startuml refetch-entry
+@startuml refetch-entry-activity
 skinparam dpi 200
 header activity
 title Refetch Entry
 
 start
-[[auth.activity.svg]]#yellow:User passes Auth\nfor editing entry;
+[[auth-activity.svg]]#yellow:User passes Auth\nfor editing entry;
 :User provides an entry ID;
 if (Entry with this ID exists?) then (yes)
     [[fetch-entry.activity.puml]]#yellow:Fetch entry;

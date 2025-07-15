@@ -1,10 +1,10 @@
-@startuml add-entry
+@startuml add-entry-activity
 skinparam dpi 200
 header activity
 title Add Entry
 
 start
-[[auth.activity.svg]]#yellow:User passes Auth\nfor creating entry;
+[[auth-activity.svg]]#yellow:User passes Auth\nfor creating entry;
 :Compute hash of
 the entry URL;
 if (Entry with this hash exists?) then (yes)
