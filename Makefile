@@ -5,7 +5,7 @@ default: check
 check: check-quick
 
 .PHONY: check-quick
-check-quick: adr format lint diagrams
+check-quick: adr format lint diagrams test
 
 .PHONY: adr
 adr: generate-adr-toc generate-adr-graph 
@@ -40,6 +40,10 @@ format:
 		-e GOLANGCI_LINT_CACHE=/.cache/golangci-lint \
 		-v ~/.cache/golagci-lint-docker:/.cache \
 		golangci/golangci-lint:v2.2.2 golangci-lint fmt
+
+.PHONY: test
+test:
+	@go test ./...
 
 .PHONY: diagrams
 diagrams:
