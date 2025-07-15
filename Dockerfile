@@ -19,6 +19,7 @@ COPY . /app/
 
 # build an executable 
 # and then compress it with upx
+# we don't need cgo so it can be disabled for even smaller binary
 RUN CGOENABLED=0 GOOS=linux \
     go build -C cmd/wallabago-api \
         -o /app/server && \
