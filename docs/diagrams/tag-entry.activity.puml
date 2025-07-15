@@ -1,5 +1,4 @@
 @startuml tag-entry-activity
-skinparam dpi 200
 header activity
 title Tag Entry
 

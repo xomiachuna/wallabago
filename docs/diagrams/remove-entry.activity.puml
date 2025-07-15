@@ -1,5 +1,4 @@
 @startuml remove-entry-activity
-skinparam dpi 200
 header activity
 title Remove Entry
 

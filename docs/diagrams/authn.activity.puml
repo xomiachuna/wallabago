@@ -1,5 +1,4 @@
 @startuml authn-activity
-skinparam dpi 200
 header activity
 title Check if credentials\npass AuthN
 
