@@ -1,0 +1,24 @@
+@startuml auth
+skinparam dpi 200
+header activity
+title Check Auth for given action
+
+start
+:User provides **credentials**
+and the **intended action**;
+if (**Check if credentials**\n**pass AuthN**) then (yes)
+    if (**Check if user passes**\n**AuthZ for action**) then (yes)
+    else (no)
+        #red:Action forbidden;
+        note: HTTP 403
+        end
+    endif
+else (no)
+    #red:User unauthorized;
+    note right: HTTP 401
+    end
+endif
+#green:User passed Auth
+for the given action;
+stop
+@enduml

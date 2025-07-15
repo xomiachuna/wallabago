@@ -1,0 +1,17 @@
+@startuml tag-entry
+skinparam dpi 200
+header activity
+title Tag Entry
+
+start
+:**User passes Auth for**
+**editing entry**;
+if (Entry exists?) then (yes)
+    :Update entry tags; 
+    #green:Show entry;
+    stop
+else (no)
+    #red:Missing entry error;
+    end
+endif
+@enduml

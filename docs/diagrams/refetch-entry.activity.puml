@@ -1,0 +1,23 @@
+@startuml refetch-entry
+skinparam dpi 200
+header activity
+title Refetch Entry
+
+start
+:**User passes Auth**
+**for editing entry**;
+:User provides an entry ID;
+if (Entry with this ID exists?) then (yes)
+    :**Fetch entry**;
+    if (Success?) then (yes)
+    #green:Show the entry;
+    stop
+    else (no)
+        #red:Show fetch error;
+        end
+    endif
+else (no)
+    #red:Show entry missing error;
+    end
+endif
+@enduml

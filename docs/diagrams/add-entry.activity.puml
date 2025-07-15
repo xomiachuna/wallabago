@@ -1,0 +1,22 @@
+@startuml add-entry
+skinparam dpi 200
+header activity
+title Add Entry
+
+start
+:**User passes Auth**
+**for adding entry**;
+:User provides an entry URL;
+:Compute hash of the URL;
+if (Entry with this hash exists?) then (yes)
+else (no)
+    :**Fetch entry**;
+    if (Success?) then (yes)
+    else (no)
+        #red:Show fetch error;
+        end
+    endif
+endif
+#green:Show entry;
+stop
+@enduml

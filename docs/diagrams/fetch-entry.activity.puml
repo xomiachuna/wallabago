@@ -1,0 +1,21 @@
+@startuml fetch-entry
+skinparam dpi 200
+header activity
+title Fetch Entry
+
+start
+:**Retrieve the entry contents***;
+if (Retrieval success?) then (yes)
+    :**Simplify entry content***;
+    if (Simplification success?) then (yes)
+        #green:Entry fetched;
+        stop
+    else (no)
+        #red:Conversion error;
+        stop
+    endif
+else (no)
+    #red:Retrieval error;
+    stop
+endif
+@enduml
