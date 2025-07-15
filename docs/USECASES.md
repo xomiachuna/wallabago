@@ -18,7 +18,7 @@ form of [Activity Diagrams](https://en.wikipedia.org/wiki/Activity_diagram).
 
 ## Delete entry
 
-![Delete entry](./diagrams/dist/delete-entry-activity.svg)
+![Delete entry](./diagrams/dist/remove-entry-activity.svg)
 
 ## Tag entry
 
