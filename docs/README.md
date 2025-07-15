@@ -2,5 +2,4 @@
 
 ## Add entry
 
-![Add entry](./diagrams/dist/add-entry-activity.svg)
-<img src="./diagrams/dist/add-entry-activity.svg" alt="add entry">
+![Add entry](https://raw.githubusercontent.com/andriihomiak/wallabago/refs/heads/refactor/scratch/docs/diagrams/dist/add-entry-activity.svg)
