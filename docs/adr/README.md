@@ -10,3 +10,4 @@ This is a template injected as an intro to the ADR toc in README.md
 * [2. Use PlantUML for diagrams](0002-use-plantuml-for-diagrams.md)
 * [3. Use lefthook for pre-commit hooks](0003-use-pre-commit-hooks.md)
 * [4. Use separate container for migrations](0004-use-separate-container-for-migrations.md)
+* [5. Use pre-commit for pre-commit hooks](0005-use-pre-commit-for-pre-commit-hooks.md)

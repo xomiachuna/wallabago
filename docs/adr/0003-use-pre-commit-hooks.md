@@ -4,9 +4,9 @@ Date: 2025-07-11
 
 ## Status
 
-Accepted
-
 Influenced by [2. Use PlantUML for diagrams](0002-use-plantuml-for-diagrams.md)
+
+Superceded by [5. Use pre-commit for pre-commit hooks](0005-use-pre-commit-for-pre-commit-hooks.md)
 
 ## Context
 

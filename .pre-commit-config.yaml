@@ -1,0 +1,10 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: local
+    hooks:
+      - id: make-check
+        name: Run make check-quick
+        entry: make -j check-quick
+        language: system
+        pass_filenames: false
