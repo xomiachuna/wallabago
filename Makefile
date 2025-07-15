@@ -5,11 +5,7 @@ default: check
 check: check-quick
 
 .PHONY: check-quick
-check-quick: adr md-lint format lint diagrams
-
-.PHONY: md-lint
-md-lint: 
-	@docker run --rm -v $$(pwd):/src letompouce/mdformat --wrap 80 .
+check-quick: adr format lint diagrams
 
 .PHONY: adr
 adr: generate-adr-toc generate-adr-graph 
