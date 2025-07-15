@@ -18,7 +18,7 @@ form of [Activity Diagrams](https://en.wikipedia.org/wiki/Activity_diagram).
 
 ## Delete entry
 
-![Add entry](./diagrams/dist/add-entry-activity.svg)
+![Delete entry](./diagrams/dist/delete-entry-activity.svg)
 
 ## Tag entry
 
@@ -26,8 +26,20 @@ form of [Activity Diagrams](https://en.wikipedia.org/wiki/Activity_diagram).
 
 ## Refetch entry
 
-![Refet entry](./diagrams/dist/refetch-entry-activity.svg)
+![Refetch entry](./diagrams/dist/refetch-entry-activity.svg)
 
 ## Fetch entry
 
 ![Fetch entry](./diagrams/dist/fetch-entry-activity.svg)
+
+## Auth
+
+![Auth](./diagrams/dist/auth-activity.svg)
+
+## AuthN
+
+![Auth](./diagrams/dist/authn-activity.svg)
+
+## AuthZ
+
+![Auth](./diagrams/dist/authz-activity.svg)
