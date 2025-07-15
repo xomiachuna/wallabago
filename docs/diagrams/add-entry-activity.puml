@@ -8,7 +8,7 @@ start
 the entry URL;
 if (Entry with this hash exists?) then (yes)
 else (no)
-    [[fetch-entry.activity.svg]]#yellow:Fetch entry;
+    [[fetch-entry-activity.svg]]#yellow:Fetch entry;
     if (Success?) then (yes)
     else (no)
         #red:Show fetch error;
