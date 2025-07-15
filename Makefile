@@ -2,10 +2,10 @@
 default: check
 
 .PHONY: check 
-check: adr md-lint format lint 
+check: check-quick
 
 .PHONY: check-quick
-check-quick: adr md-lint format lint 
+check-quick: adr md-lint format lint diagrams
 
 .PHONY: md-lint
 md-lint: 
@@ -45,6 +45,10 @@ format:
 		-v ~/.cache/golagci-lint-docker:/.cache \
 		golangci/golangci-lint:v2.2.2 golangci-lint fmt
 
+.PHONY: diagrams
+diagrams:
+	@docker run --rm -v ./docs:/docs plantuml/plantuml \
+		-tsvg -o /docs/diagrams/dist /docs/diagrams
 
 .PHONY: up
 up:
