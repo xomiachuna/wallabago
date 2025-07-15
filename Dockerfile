@@ -17,13 +17,11 @@ RUN go mod download -x
 # copy the rest
 COPY . /app/
 
-# build an executable with race detection and embed vcs info
+# build an executable 
 # and then compress it with upx
-RUN CGOENABLED=1 GOOS=linux \
+RUN CGOENABLED=0 GOOS=linux \
     go build -C cmd/wallabago-api \
-        -o /app/server \
-        -race \
-        -buildvcs=true && \
+        -o /app/server && \
     /tools/upx -v --best /app/server
 
 # run tests
@@ -36,7 +34,7 @@ RUN go test -v ./...
 # (incompatible with CGOENABLED=1)
 # base-nossl-* contains no libssl but contains glibc and everything from static-*
 # base-* contains libssl and glibc and everything from static-*
-FROM gcr.io/distroless/base-nossl-debian12:nonroot AS runtime
+FROM gcr.io/distroless/static-debian12:nonroot AS runtime
 USER nonroot:nonroot
 WORKDIR /app
 COPY --from=builder /app/server /app/server
