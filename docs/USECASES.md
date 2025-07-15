@@ -5,7 +5,7 @@ form of [Activity Diagrams](https://en.wikipedia.org/wiki/Activity_diagram).
 
 > [!NOTE]
 > 
-> Source files for the diagrams in [PlantUML format](https://plantuml.com/activity-diagram-beta) are located in [diagrams/](./diagrams/)
+> Source files for the diagrams in [PlantUML format](https://plantuml.com/activity-diagram-beta) are located in [`diagrams/`](./diagrams/)
 
 > [!TIP]
 >
