@@ -1,5 +1,8 @@
 # Use cases
 
+> \[!TIP\] Open the source SVG for the digrams and you-ll be able to click
+> through them. Yellow blocks are clickable and will link to another diagram
+
 ## Add entry
 
-![Add entry](https://raw.githubusercontent.com/andriihomiak/wallabago/refs/heads/refactor/scratch/docs/diagrams/dist/add-entry-activity.svg)
+![Add entry](./diagrams/dist/add-entry-activity.svg)
