@@ -4,11 +4,10 @@ header activity
 title Refetch Entry
 
 start
-:**User passes Auth**
-**for editing entry**;
+[[auth.activity.svg]]#yellow:User passes Auth\nfor editing entry;
 :User provides an entry ID;
 if (Entry with this ID exists?) then (yes)
-    :**Fetch entry**;
+    [[fetch-entry.activity.puml]]#yellow:Fetch entry;
     if (Success?) then (yes)
     #green:Show the entry;
     stop

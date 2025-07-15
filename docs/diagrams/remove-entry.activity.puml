@@ -4,8 +4,7 @@ header activity
 title Remove Entry
 
 start
-:**User passes Auth**
-**for removing entry**;
+[[auth.activity.svg]]#yellow:User passes Auth\nfor removing entry;
 :User provides an entry ID;
 if (Entry with this ID exists?) then (yes)
     :Remove the entry;

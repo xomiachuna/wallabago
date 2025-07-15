@@ -4,8 +4,7 @@ header activity
 title Tag Entry
 
 start
-:**User passes Auth for**
-**editing entry**;
+[[auth.activity.svg]]#yellow:User passes Auth\nfor editing entry;
 if (Entry exists?) then (yes)
     :Update entry tags; 
     #green:Show entry;

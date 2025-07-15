@@ -10,7 +10,7 @@ if (User is admin?) then (yes)
     stop
 else (no)
 endif
-if (User has granted\npermission to perform action?) then (yes)
+if (User is granted\npermission to perform action?) then (yes)
     #green:User passes Authz;
     stop
 else (no)

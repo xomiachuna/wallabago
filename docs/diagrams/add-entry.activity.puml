@@ -4,10 +4,9 @@ header activity
 title Add Entry
 
 start
-:**User passes Auth**
-**for adding entry**;
-:User provides an entry URL;
-:Compute hash of the URL;
+[[auth.activity.svg]]#yellow:User passes Auth\nfor creating entry;
+:Compute hash of
+the entry URL;
 if (Entry with this hash exists?) then (yes)
 else (no)
     :**Fetch entry**;

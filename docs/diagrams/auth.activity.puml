@@ -6,8 +6,10 @@ title Check Auth for given action
 start
 :User provides **credentials**
 and the **intended action**;
-if (**Check if credentials**\n**pass AuthN**) then (yes)
-    if (**Check if user passes**\n**AuthZ for action**) then (yes)
+[[authn.activity.svg]]#yellow:Check if credentials\npass AuthN;
+if (Pass?) then (yes)
+    [[authz.activity.svg]]#yellow:Check if user\npasses AuthZ;
+    if (Pass?) then (yes)
     else (no)
         #red:Action forbidden;
         note: HTTP 403

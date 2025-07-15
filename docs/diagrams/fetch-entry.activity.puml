@@ -4,9 +4,10 @@ header activity
 title Fetch Entry
 
 start
-:**Retrieve the entry contents***;
+#yellow:Retrieve the
+entry contents*;
 if (Retrieval success?) then (yes)
-    :**Simplify entry content***;
+    #yellow:Simplify entry content*;
     if (Simplification success?) then (yes)
         #green:Entry fetched;
         stop
