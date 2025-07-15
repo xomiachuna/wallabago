@@ -1,0 +1,16 @@
+# use https://editor-next.swagger.io/ to explore the api
+openapi: 3.1.1
+servers:
+  - url: http://localhost:7080
+    description: wallabago
+info:
+  title: wallabago API documentation
+  description: This is the API documentation of wallabago - will be generated!
+  version: 2.x
+  license:
+    name: MIT
+    identifier: MIT
+
+paths: {}
+components: {}
+security: []

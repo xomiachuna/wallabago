@@ -1,0 +1,1526 @@
+# use https://editor-next.swagger.io/ to explore the api
+openapi: 3.1.1
+servers:
+  - url: http://localhost:8080
+    description: Wallabag
+info:
+  title: Wallabag API documentation
+  description: This is the API documentation of Wallabag
+  version: 2.x
+  license:
+    name: MIT
+    identifier: MIT
+
+paths:
+  /oauth/v2/token:
+    post:
+      tags:
+        - OAuth2
+      operationId: postOAuth2Token
+      summary: Get OAuth2 Bearer token
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - grant_type
+                - client_id
+                - client_secret
+                - username
+                - password
+              properties:
+                grant_type:
+                  type: string
+                  const: password
+                  default: password
+                client_id:
+                  type: string
+                  examples:
+                    - 2_1nkjcu5gqqyskkccks0woc4c8w888ow444wkgoogg0w0sgggs0
+                client_secret:
+                  examples:
+                    - 66r179juvosokko84cww0kkw8w0o8sg84kcc0oo8wsgos44ww0
+                  type: string
+                username:
+                  type: string
+                  examples:
+                    - wallabag
+                password:
+                  type: string
+                  examples:
+                    - wallabag
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthToken"
+
+        "400":
+          description: Unsuccessful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthError"
+
+  /api/annotations/{arg}:
+    get:
+      operationId: getAnnotations
+      tags:
+        - Annotations
+      summary: Retrieve annotations for an entry.
+      parameters:
+        - name: arg
+          in: path
+          description: The entry ID
+          required: true
+          schema:
+            type: integer
+            pattern: \w+
+      responses:
+        "200":
+          description: Returned when successful
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    post:
+      operationId: postAnnotations
+      tags:
+        - Annotations
+      summary: Creates a new annotation.
+      parameters:
+        - name: arg
+          in: path
+          description: The entry ID
+          required: true
+          schema:
+            type: integer
+            pattern: \w+
+      requestBody:
+        content:
+          application/json:
+            schema:
+              required:
+                - text
+              properties:
+                ranges:
+                  description: The range array for the annotation
+                  type: array
+                  items:
+                    type: string
+                    pattern: \w+
+                quote:
+                  description: The annotated text
+                  type: array
+                  items:
+                    type: string
+                text:
+                  description: Content of annotation
+                  type: array
+                  items:
+                    type: string
+              type: object
+      responses:
+        "200":
+          description: Returned when successful
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    put:
+      operationId: putAnnotation
+      tags:
+        - Annotations
+      summary: Updates an annotation.
+      parameters:
+        - name: arg
+          in: path
+          description: The annotation ID
+          required: true
+          schema:
+            type: string
+            pattern: \w+
+      responses:
+        "200":
+          description: Returned when successful
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    delete:
+      operationId: deleteAnnotation
+      tags:
+        - Annotations
+      summary: Removes an annotation.
+      parameters:
+        - name: arg
+          in: path
+          description: The annotation ID
+          required: true
+          schema:
+            type: string
+            pattern: \w+
+      responses:
+        "200":
+          description: Returned when successful
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /api/config:
+    get:
+      operationId: getConfig
+      tags:
+        - Config
+      summary: Retrieve configuration for current user.
+      responses:
+        "200":
+          description: Returned when successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserConfig"
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /api/entries/exists:
+    get:
+      operationId: getEntryExists
+      tags:
+        - Entries
+      summary: Check if an entry exist by url.
+      description: |-
+        Return ID if entry(ies) exist (and if you give the return_id parameter).
+        Otherwise it returns false.
+      parameters:
+        - name: return_id
+          in: query
+          description: Set 1 if you want to retrieve ID in case entry(ies) exists, 0 by default
+          required: false
+          schema:
+            type: integer
+            enum:
+              - 1
+              - 0
+        - name: url
+          in: query
+          description: DEPRECATED, use hashed_url instead. An url
+          required: false
+          deprecated: true
+          schema:
+            type: string
+            format: url
+        - name: urls[]
+          in: query
+          description: DEPRECATED, use hashed_urls instead. An array of urls (?urls[]=http...&urls[]=http...)
+          deprecated: true
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: hashed_url
+          in: query
+          description: Hashed url using SHA1 to check if it exists. A hashed url
+          required: false
+          schema:
+            type: string
+        - name: hashed_urls[]
+          in: query
+          description: An array of hashed urls using SHA1 to check if they exist. An array of hashed urls (?hashed_urls[]=xxx...&hashed_urls[]=xxx...)
+          required: false
+          style: form
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        "200":
+          description: Returned when successful
+          content:
+            application/json:
+              schema:
+                type: object
+                oneOf:
+                  - properties:
+                      exists:
+                        type:
+                          - integer
+                          - "null"
+                          - boolean
+                    examples:
+                      - exists: true
+                      - exists: null
+                      - exists: 1
+                  - additionalProperties:
+                      type:
+                        - integer
+                        - "null"
+                        - boolean
+                    examples:
+                      - http://localhost:9090/test: false
+                        http://localhost:9090/test2: 1
+                      - http://localhost:9090/test: null
+                        http://localhost:9090/test2: 1
+
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /api/entries:
+    get:
+      operationId: getEntries
+      tags:
+        - Entries
+      summary: Retrieve all entries. It could be filtered by many options.
+      parameters:
+        - name: archive
+          in: query
+          description: filter by archived status. all entries by default.
+          required: false
+          schema:
+            type: integer
+            enum:
+              - 1
+              - 0
+        - name: starred
+          in: query
+          description: filter by starred status. all entries by default
+          required: false
+          schema:
+            type: integer
+            enum:
+              - 1
+              - 0
+        - name: sort
+          in: query
+          description: sort entries by date.
+          required: false
+          schema:
+            type: string
+            enum:
+              - created
+              - updated
+              - archived
+        - name: order
+          in: query
+          description: order of sort.
+          required: false
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+        - name: page
+          in: query
+          description: what page you want.
+          required: false
+          schema:
+            type: integer
+            exclusiveMinimum: 0
+        - name: perPage
+          in: query
+          description: results per page.
+          required: false
+          schema:
+            type: integer
+        - name: tags
+          in: query
+          description: a comma-seperated list of tags url encoded. Will returns entries that matches ALL tags.
+          required: false
+          schema:
+            type: string
+        - name: since
+          in: query
+          description: The timestamp since when you want entries updated.
+          required: false
+          schema:
+            type: integer
+        - name: public
+          in: query
+          description: filter by entries with a public link. all entries by default
+          required: false
+          schema:
+            type: integer
+            enum:
+              - 1
+              - 0
+        - name: detail
+          in: query
+          description: include content field if 'full'. 'full' by default for backward compatibility.
+          required: false
+          schema:
+            type: string
+            enum:
+              - metadata
+              - full
+        - name: domain_name
+          in: query
+          description: filter entries with the given domain name
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Returned when successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntriesResponse"
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    post:
+      operationId: postEntry
+      tags:
+        - Entries
+      summary: Create an entry.
+      description: |-
+        If you want to provide the HTML content (which means wallabag won't fetch it from the url), you must provide `content`, `title` & `url` fields **non-empty**.
+        Otherwise, content will be fetched as normal from the url and values will be overwritten.
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                url:
+                  description: Url for the entry.
+                  type: string
+                  format: url
+                  example: https://xomiachuna.tech/
+                title:
+                  description: Optional, we'll get the title from the page.
+                  type: string
+                tags:
+                  description: a comma-separated list of tags.
+                  type: array
+                  items:
+                    type: string
+                archive:
+                  description: entry already archived
+                  type:
+                    - integer
+                    - "null"
+                  enum:
+                    - 1
+                    - 0
+                starred:
+                  description: entry already starred
+                  type: integer
+                  enum:
+                    - 1
+                    - 0
+                content:
+                  description: Content of the entry
+                  type: string
+                language:
+                  description: Language of the entry
+                  type: string
+                preview_picture:
+                  description: Preview picture of the entry
+                  type: string
+                published_at:
+                  description: Published date of the entry
+                  type: string
+                  format: date-time
+                authors:
+                  description: Authors of the entry
+                  type: array
+                  items:
+                    type: string
+                  example: [Xomiachuna]
+                public:
+                  description: will generate a public link for the entry
+                  type: integer
+                  enum:
+                    - 1
+                    - 0
+                origin_url:
+                  description: Origin url for the entry (from where you found it).
+                  type: string
+                  format: url
+                  example: https://xomiachuna.tech
+      responses:
+        "200":
+          description: Returned when successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Entry"
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /api/entries/{entry}:
+    get:
+      operationId: getEntry
+      tags:
+        - Entries
+      summary: Retrieve a single entry.
+      parameters:
+        - name: entry
+          in: path
+          description: The entry ID
+          required: true
+          schema:
+            type: integer
+            pattern: \w+
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Entry"
+          description: Returned when successful
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    delete:
+      operationId: deleteEntry
+      tags:
+        - Entries
+      summary: Delete permanently an entry.
+      parameters:
+        - name: expect
+          in: query
+          description: Only returns the id instead of the deleted entry's full entity if 'id' is specified.
+          required: false
+          schema:
+            type: string
+            default: entry
+            enum:
+              - id
+              - entry
+        - name: entry
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Returned when successful
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/Entry"
+                  - type: object
+                    properties:
+                      id:
+                        type: integer
+
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    patch:
+      parameters:
+        - name: entry
+          in: path
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - entry
+              properties:
+                title:
+                  type: string
+                tags:
+                  description: a comma-separated list of tags.
+                  type: array
+                  items:
+                    type: string
+                archive:
+                  description: entry already archived
+                  type:
+                    - integer
+                    - "null"
+                  enum:
+                    - 1
+                    - 0
+                starred:
+                  description: entry already starred
+                  type: integer
+                  enum:
+                    - 1
+                    - 0
+                content:
+                  description: Content of the entry
+                  type: string
+                language:
+                  description: Language of the entry
+                  type: string
+                preview_picture:
+                  description: Preview picture of the entry
+                  type: string
+                published_at:
+                  description: Published date of the entry
+                  type: string
+                  format: date-time
+                authors:
+                  description: Authors of the entry
+                  type: array
+                  items:
+                    type: string
+                  example: [Xomiachuna]
+                public:
+                  description: will generate a public link for the entry
+                  type: integer
+                  enum:
+                    - 1
+                    - 0
+                origin_url:
+                  description: Origin url for the entry (from where you found it).
+                  type: string
+                  format: url
+                  example: https://xomiachuna.tech
+      responses:
+        "200":
+          description: Returned when successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Entry"
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+      operationId: patchEntry
+      tags:
+        - Entries
+      summary: Change several properties of an entry.
+  /api/entries/{entry}/export.{format}:
+    get:
+      operationId: getExportEntry
+      tags:
+        - Entries
+      summary: Retrieve a single entry as a predefined format.
+      parameters:
+        - name: entry
+          in: path
+          description: The entry ID
+          required: true
+          schema:
+            type: integer
+            pattern: \w+
+        - name: format
+          in: path
+          description: ""
+          required: true
+          schema:
+            type: string
+            enum:
+              - xml
+              - json
+              - txt
+              - csv
+              - pdf
+              - epub
+              - mobi
+      responses:
+        "200":
+          description: Returned when successful
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /api/entries/list:
+    delete:
+      operationId: getEntriesList
+      tags:
+        - Entries
+      summary: Handles an entries list and delete URL.
+      parameters:
+        - name: urls
+          in: query
+          description: Urls (as an array) to create. A JSON array of urls ["http://...", "http://..."]
+          required: true
+          example: '["https://xomiachuna.tech"]'
+          schema:
+            type: string
+            contentSchema:
+              type: array
+              items:
+                type: string
+                format: url
+                example: https://xomiachuna.tech
+      responses:
+        "200":
+          description: Returned when successful
+          content:
+            application/json:
+              example:
+                - url: https://xomiachuna.tech
+                  entry: true
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    url:
+                      type: string
+                    entry:
+                      type: boolean
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /api/entries/lists:
+    post:
+      operationId: postEnntriesList
+      tags:
+        - Entries
+      summary: Handles an entries list and create URL.
+      parameters:
+        - name: urls
+          in: query
+          description: Urls (as an array) to create. A JSON array of urls ["http://...", "http://..."]
+          required: true
+          example: '["https://xomiachuna.tech"]'
+          schema:
+            type: string
+            contentSchema:
+              type: array
+              items:
+                type: string
+                format: url
+                example: https://xomiachuna.tech
+      responses:
+        "200":
+          description: Returned when successful
+          content:
+            application/json:
+              example:
+                - url: https://xomiachuna.tech
+                  entry: 42
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    url:
+                      type: string
+                    entry:
+                      type: integer
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /api/entries/{entry}/reload:
+    patch:
+      operationId: patchEntryReload
+      tags:
+        - Entries
+      summary: Reload an entry.
+      description: An empty response with HTTP Status 304 will be send if we weren't able to update the content (because it hasn't changed or we got an error).
+      parameters:
+        - name: entry
+          in: path
+          description: The entry ID
+          required: true
+          schema:
+            type: integer
+            pattern: \w+
+      responses:
+        "200":
+          description: Returned when successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Entry"
+        "304":
+          description: Returned when the content hasnt changed
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /api/entries/{entry}/tags:
+    get:
+      operationId: getEntryTags
+      tags:
+        - Entries
+      summary: Retrieve all tags for an entry.
+      parameters:
+        - name: entry
+          in: path
+          description: The entry ID
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+      responses:
+        "200":
+          description: Returned when successful
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TagItem"
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    post:
+      operationId: postEntryTags
+      tags:
+        - Entries
+      summary: Add one or more tags to an entry.
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            example:
+              tags:
+                - tag1
+                - tag2
+            schema:
+              type: object
+              properties:
+                tags:
+                  type: array
+                  items:
+                    type: string
+                  uniqueItems: true
+
+      parameters:
+        - name: entry
+          in: path
+          description: The entry ID
+          required: true
+          schema:
+            type: integer
+            pattern: \w+
+      responses:
+        "200":
+          description: Returned when successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Entry"
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /api/entries/{entry}/tags/{tag}:
+    delete:
+      operationId: deleteEntryTag
+      tags:
+        - Entries
+      summary: Permanently remove one tag for an entry.
+      parameters:
+        - name: entry
+          in: path
+          description: The entry ID
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+        - name: tag
+          in: path
+          description: The tag ID
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+      responses:
+        "200":
+          description: Returned when successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Entry"
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /api/entries/tags/list:
+    delete:
+      operationId: deleteEntryTagLists
+      tags:
+        - Entries
+      summary: Handles an entries list delete tags from them.
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            example:
+              list: '[{"url": "https://xomiachuna.tech", "tags": "string,string1"}]'
+            schema:
+              type: object
+              description: "Urls (as an array) to handle. A JSON array of urls [{'url': 'http://...','tags': 'tag1, tag2'}, {'url': 'http://...','tags': 'tag1, tag2'}]"
+              properties:
+                list:
+                  type: string
+                  contentSchema:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        url:
+                          type: string
+                          format: url
+                        tags:
+                          type: string
+
+      responses:
+        "200":
+          description: Returned when successful
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /api/entries/tags/lists:
+    post:
+      operationId: postEntryTagLists
+      tags:
+        - Entries
+      summary: Handles an entries list and add tags to them.
+      parameters:
+        - name: list
+          in: query
+          description: "Urls (as an array) to handle. A JSON array of urls [{'url': 'http://...','tags': 'tag1, tag2'}, {'url': 'http://...','tags': 'tag1, tag2'}]"
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Returned when successful
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /api/search:
+    get:
+      operationId: getSearch
+      tags:
+        - Search
+      summary: Search all entries by term.
+      parameters:
+        - name: term
+          in: query
+          description: Any query term
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: what page you want.
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: perPage
+          in: query
+          description: results per page.
+          required: false
+          schema:
+            type: integer
+            default: 30
+      responses:
+        "200":
+          description: Returned when successful
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /api/tags:
+    get:
+      operationId: getTags
+      tags:
+        - Tags
+      summary: Retrieve all tags.
+      responses:
+        "200":
+          description: Returned when successful
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TagListItem"
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /api/tag/label:
+    delete:
+      operationId: deleteTagLabel
+      tags:
+        - Tags
+      summary: Permanently remove one tag from every entry by passing the Tag label.
+      parameters:
+        - name: tag
+          in: query
+          description: Tag as a string
+          required: true
+          schema:
+            type: string
+            pattern: \w+
+      responses:
+        "200":
+          description: Returned when successful
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /api/tags/label:
+    delete:
+      operationId: deleteTagsLabel
+      tags:
+        - Tags
+      summary: Permanently remove some tags from every entry.
+      parameters:
+        - name: tags
+          in: query
+          description: Tags as strings (comma splitted)
+          required: true
+          schema:
+            type: string
+            example: tag1,tag2
+      responses:
+        "200":
+          description: Returned when successful
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /api/tags/{tag}:
+    delete:
+      operationId: deleteTag
+      tags:
+        - Tags
+      summary: Permanently remove one tag from every entry by passing the Tag ID.
+      parameters:
+        - name: tag
+          in: path
+          description: The tag
+          required: true
+          schema:
+            type: integer
+            pattern: \w+
+      responses:
+        "200":
+          description: Returned when successful
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /api/taggingrule/export:
+    get:
+      operationId: getExportTaggingRule
+      tags:
+        - TaggingRule
+      summary: Export all tagging rules as a json file.
+      responses:
+        "200":
+          description: Returned when successful
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /api/user:
+    get:
+      operationId: getUser
+      tags:
+        - User
+      summary: Retrieve current logged in user informations.
+      responses:
+        "200":
+          description: Returned when successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    put:
+      tags:
+        - User
+      summary: Register an user and create a client.
+      operationId: put_api_put_user
+      requestBody:
+        content:
+          application/json:
+            schema:
+              required:
+                - username
+                - password
+                - email
+              properties:
+                username:
+                  description: The user's username
+                  type: string
+                  example: wallabag
+                password:
+                  description: The user's password
+                  type: string
+                  example: hidden_value
+                email:
+                  description: The user's email
+                  type: string
+                  example: wallabag@wallabag.io
+                client_name:
+                  description: The client name (to be used by your app)
+                  type: string
+                  example: Fancy App
+              type: object
+      responses:
+        "201":
+          description: Returned when successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User2"
+        "403":
+          description: Server doesn't allow registrations
+        "400":
+          description: Request is incorrectly formatted
+  /api/version:
+    get:
+      operationId: getVersion
+      tags:
+        - Information
+      summary: Retrieve version number.
+      responses:
+        "200":
+          description: Returned when successful
+          content:
+            application/json:
+              schema:
+                description: Version number of the application.
+                type: string
+              example: 2.5.2
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+      deprecated: true
+  /api/info:
+    get:
+      operationId: getInfo
+      tags:
+        - Information
+      summary: Retrieve information about the running wallabag application.
+      responses:
+        "200":
+          description: Returned when successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationInfo"
+        "400":
+          description: Api error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+components:
+  schemas:
+    User:
+      properties:
+        id:
+          description: The unique numeric id of the user
+          type: integer
+          example: 12
+        username:
+          description: The unique username of the user
+          type: string
+          example: wallabag
+        email:
+          description: E-mail address of the user
+          type: string
+          example: wallabag@wallabag.io
+        name:
+          description: The personal Name of the user
+          type: string
+          example: Walla Baggger
+        created_at:
+          description: Creation date of the user account. (In ISO 8601 format)
+          type: string
+          example: 2023-06-27T19:25:44+0000
+        updated_at:
+          description: Update date of the user account. (In ISO 8601 format)
+          type: string
+          example: 2023-06-27T19:37:30+0000
+      type: object
+    User2:
+      properties:
+        id:
+          description: The unique numeric id of the user
+          type: integer
+          example: 12
+        username:
+          description: The unique username of the user
+          type: string
+          example: wallabag
+        email:
+          description: E-mail address of the user
+          type: string
+          example: wallabag@wallabag.io
+        name:
+          description: The personal Name of the user
+          type: string
+          example: Walla Baggger
+        created_at:
+          description: Creation date of the user account. (In ISO 8601 format)
+          type: string
+          example: 2023-06-27T19:25:44+0000
+        updated_at:
+          description: Update date of the user account. (In ISO 8601 format)
+          type: string
+          example: 2023-06-27T19:37:30+0000
+        default_client:
+          $ref: "#/components/schemas/Client"
+      type: object
+    ApplicationInfo:
+      properties:
+        appname:
+          description: Name of the application.
+          type: string
+          example: wallabag
+        version:
+          description: Version number of the application.
+          type: string
+          example: 2.5.2
+        allowed_registration:
+          description: Indicates whether registration is allowed. See PUT /api/user.
+          type: boolean
+      type: object
+    Client:
+      properties:
+        client_secret:
+          description: Client secret used for authorization
+          type: string
+          example: 2lmubx2m9vy80ss8c4wwcsg8ok44s88ocwcc8wo0w884oc8440
+        client_id:
+          description: Client secret used for authorization
+          type: string
+          example: 3_1lpybsn0od40css4w4ko8gsc8cwwskggs8kgg448ko0owo4c84
+        name:
+          description: Name of the API client
+          type: string
+          example: Default Client
+      type: object
+    AuthError:
+      description: Error during auth flow
+      properties:
+        error:
+          type: string
+          example: "some_error_code"
+        error_description:
+          type: string
+          example: "something bad happened"
+      type: object
+    EntriesResponse:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        pages:
+          type: integer
+        total:
+          type: integer
+        _links:
+          type: object
+          properties:
+            self:
+              type: object
+              properties:
+                href:
+                  type: string
+                  format: url
+              additionalProperties: false
+            first:
+              type: object
+              properties:
+                href:
+                  type: string
+                  format: url
+              additionalProperties: false
+            last:
+              type: object
+              properties:
+                href:
+                  type: string
+                  format: url
+              additionalProperties: false
+            next:
+              type: object
+              properties:
+                href:
+                  type: string
+                  format: url
+              additionalProperties: false
+          additionalProperties: false
+        _embedded:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/Entry"
+
+          additionalProperties: false
+      additionalProperties: false
+
+    Entry:
+      type: object
+      properties:
+        is_archived:
+          type: integer
+        is_starred:
+          type: integer
+        user_name:
+          type: string
+        user_email:
+          type: string
+          format: email
+        user_id:
+          type: integer
+        tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/TagItem"
+        is_public:
+          type: boolean
+        id:
+          type: integer
+        uid:
+          type:
+            - "null"
+            - string
+        title:
+          type: string
+        url:
+          type: string
+          format: url
+        hashed_url:
+          type: string
+        origin_url:
+          type:
+            - string
+            - "null"
+        given_url:
+          type: string
+          format: url
+        hashed_given_url:
+          type: string
+        archived_at:
+          type: string
+          format: date-time
+        content:
+          type:
+            - string
+            - "null"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        published_at:
+          type: string
+          format: date-time
+        published_by:
+          type: array
+        starred_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        annotations:
+          type: array
+        mimetype:
+          type: string
+        language:
+          type: string
+        reading_time:
+          type: integer
+        domain_name:
+          type: string
+        preview_picture:
+          type: string
+          format: url
+        http_status:
+          type: string
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        _links:
+          type: object
+          properties:
+            self:
+              type: object
+              properties:
+                href:
+                  type: string
+              additionalProperties: false
+          additionalProperties: false
+      additionalProperties: false
+
+    AuthToken:
+      type: object
+      properties:
+        access_token:
+          type: string
+          example: EXAMPLEDQ2ODc0ODgxYzA2ZGE2OEXAMPLE
+        expires_in:
+          type: integer
+          exclusiveMinimum: 0
+          example: 3600
+        refresh_token:
+          type: string
+          example: YjgyZjIwZmEyMDk5ZDQ2ODc0ODgxYzA2ZGE2OEXAMPLE
+        scope:
+          type: "null"
+        token_type:
+          const: bearer
+
+    ApiError:
+      type: object
+      properties:
+        type:
+          type: string
+          format: url
+          example: https://tools.ietf.org/html/rfc2616#section-10
+        title:
+          type: string
+          example: An error occured
+        status:
+          type: integer
+          example: 404
+          minimum: 100
+          maximum: 599
+        detail:
+          type: string
+          example: Not Found
+      required:
+        - type
+        - detail
+        - title
+        - status
+
+    UserConfig:
+      type: object
+      properties:
+        id:
+          type: integer
+        items_per_page:
+          type: integer
+        language:
+          type: string
+        feed_limit:
+          type: integer
+        reading_speed:
+          type: integer
+        action_mark_as_read:
+          type: integer
+        list_mode:
+          type: integer
+        display_thumbnails:
+          type: integer
+      additionalProperties: false
+
+    TagItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        label:
+          type: string
+        slug:
+          type: string
+
+    TagListItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        label:
+          type: string
+        slug:
+          type: string
+        nbEntries:
+          type: integer
+
+  securitySchemes:
+    oauth2:
+      type: oauth2
+      flows:
+        password:
+          tokenUrl: /oauth/v2/token
+          scopes: {}
+
+security:
+  - oauth2: []
