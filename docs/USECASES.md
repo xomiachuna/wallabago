@@ -17,6 +17,9 @@ form of [Activity Diagrams](https://en.wikipedia.org/wiki/Activity_diagram).
 ![Add entry](./diagrams/dist/add-entry-activity.svg)
 
 ## Delete entry
+> [!NOTE]
+>
+> Update is the same apart from the required permissions necessary
 
 ![Delete entry](./diagrams/dist/remove-entry-activity.svg)
 
@@ -34,6 +37,9 @@ form of [Activity Diagrams](https://en.wikipedia.org/wiki/Activity_diagram).
 
 ## Import From Wallabag
 ![Import from Wallabag](./diagrams/dist/import-from-wallabag-activity.svg)
+
+## Export entry
+![Export](./diagrams/dist/export-entry-activity.svg)
 
 ## Auth
 
