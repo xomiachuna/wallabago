@@ -1,6 +1,6 @@
 # `wallabago` documentation
 * [Use cases](./USECASES.md)
-* [Access Control Desig](./ACCESSCONTROL.md)
+* [Access Control Design](./ACCESSCONTROL.md)
 
 ## ADRs
 
