@@ -2,13 +2,12 @@ package http
 
 import (
 	"log/slog"
-
-	"github.com/andriihomiak/wallabago/internal/instrumentation"
+	// enable instrumentation.
+	_ "github.com/andriihomiak/wallabago/internal/instrumentation"
 )
 
 type Config struct {
-	Port            int
-	Instrumentation instrumentation.Config
+	Port int
 }
 
 type Server struct {
@@ -16,7 +15,6 @@ type Server struct {
 }
 
 func (s *Server) Start() error {
-	instrumentation.Instrument(s.Config.Instrumentation)
 	slog.Info("Starting server")
 	return nil
 }

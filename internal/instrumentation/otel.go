@@ -10,7 +10,7 @@ import (
 
 var Tracer trace.Tracer
 
-func InitTracer() trace.Tracer {
+func initTracer() {
 	otelScopeName := "wallabago"
 	otelScopeVersion := "0.0.0"
 	buildInfo, ok := debug.ReadBuildInfo()
@@ -19,5 +19,8 @@ func InitTracer() trace.Tracer {
 		otelScopeVersion = buildInfo.Main.Version
 	}
 	Tracer = otel.Tracer(otelScopeName, trace.WithInstrumentationVersion(otelScopeVersion))
-	return Tracer
+}
+
+func init() {
+	initTracer()
 }

@@ -8,9 +8,7 @@ import (
 	"go.opentelemetry.io/contrib/bridges/otelslog"
 )
 
-var Logger *slog.Logger
-
-func InitLogger() *slog.Logger {
+func initLogger() {
 	otelScopeName := "wallabago"
 	otelScopeVersion := "0.0.0"
 	buildInfo, ok := debug.ReadBuildInfo()
@@ -20,8 +18,6 @@ func InitLogger() *slog.Logger {
 	}
 	otelHandler := otelslog.NewHandler(otelScopeName, otelslog.WithVersion(otelScopeVersion))
 	stderrHandler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug, AddSource: false})
-	Logger = slog.New(MultiHandler(otelHandler, stderrHandler))
-	Logger.Debug("Created logger", "logger", Logger)
-	slog.SetDefault(Logger)
-	return Logger
+	logger := slog.New(MultiHandler(otelHandler, stderrHandler))
+	slog.SetDefault(logger)
 }
