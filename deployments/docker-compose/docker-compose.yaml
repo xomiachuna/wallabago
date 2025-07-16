@@ -1,5 +1,8 @@
 services:
   migrations:
+    networks:
+      - wallabago-signoz
+      - wallabago
     image: migrate/migrate:v4.18.3
     depends_on:
       postgres:
@@ -11,6 +14,9 @@ services:
     entrypoint: ["/bin/sh", "-c", "migrate -path=/migrations/ -database $$DB up"]
 
   wallabago:
+    networks:
+      - wallabago-signoz
+      - wallabago
     depends_on:
       postgres:
         condition: service_healthy
@@ -24,6 +30,8 @@ services:
       - 7080:8080
 
   postgres:
+    networks:
+      - wallabago
     image: postgres:17
     ports:
       - 25432:5432
@@ -39,3 +47,9 @@ services:
       timeout: 5s
       interval: 10s
       retries: 10
+        
+networks:
+  wallabago:
+  wallabago-signoz:
+    name: wallabago-signoz
+    external: true

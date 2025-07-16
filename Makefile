@@ -50,14 +50,26 @@ diagrams:
 	@docker run --rm -v ./docs:/docs plantuml/plantuml \
 		-tsvg -o /docs/diagrams/dist /docs/diagrams
 
+.PHONY: signoz-up
+signoz-up:
+	@docker compose \
+		-f deployments/docker-compose/signoz/docker-compose.yaml \
+		up -d
+
+.PHONY: signoz-down
+signoz-down:
+	@docker compose \
+		-f deployments/docker-compose/signoz/docker-compose.yaml \
+		down
+
 .PHONY: up
-up:
+up: signoz-up
 	@docker compose \
 		-f deployments/docker-compose/docker-compose.yaml \
 		up --build --force-recreate
 
 .PHONY: down
-down:
+down: signoz-down
 	@docker compose \
 		-f deployments/docker-compose/docker-compose.yaml \
 		down 
