@@ -1,0 +1,79 @@
+@startmindmap rbac-permissions-mindmap
+header mindmap
+title RBAC Permissions Hierarchy
+<style>
+mindmapDiagram {
+    :depth(0) {
+        BackgroundColor GoldenRod
+    }
+
+    :depth(1) {
+        BackgroundColor LightSkyBlue
+    }
+
+    :depth(2) {
+        BackgroundColor LightCoral
+    }
+
+    :depth(3) {
+        BackgroundColor PaleGoldenRod
+    }
+}
+</style>
+' Permissions Start
+* Permissions
+
+**:Admin
+----
+Administrative tasks
+not related to content;
+*** Settings
+**** ReadWrite
+*** Users
+**** Manage
+****:ChangeAdminStatus
+----
+Allows to change the
+user admin status for
+other users;
+
+** Users
+*** Self
+**** ReadWrite
+
+** Entries
+*** MyOwn
+**** Manage
+**** Export
+***:All
+----
+It does not make
+sense to be able
+to create entries
+on behalf of others;
+**** ReadWrite
+**** Delete
+**** Export
+
+
+**:APIClients
+----
+API Clients can be
+used to authorize external
+applications to manage the
+entries on behalf of the user;
+***:All
+----
+Access to editing other
+user's clients except
+creation;
+**** ReadWrite
+**** Delete
+
+***:MyOwn
+----
+Access only to clients
+created by this user;
+**** Manage
+' Permissions End
+@endmindmap

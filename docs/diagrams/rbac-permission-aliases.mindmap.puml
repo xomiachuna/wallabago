@@ -1,0 +1,53 @@
+@startmindmap rbac-permission-aliases-mindmap
+header mindmap
+title RBAC Action Aliases
+<style>
+mindmapDiagram {
+    :depth(0) {
+        BackgroundColor PaleGoldenRod
+    }
+
+    :depth(1) {
+        BackgroundColor LightCoral
+    }
+
+    :depth(2) {
+        BackgroundColor LightSteelBlue
+    }
+
+    :depth(3) {
+        BackgroundColor PaleGoldenRod
+    }
+}
+</style>
+' Action Aliases Start
+*:Action Aliases
+----
+Expansion of the aliases
+is the set of all actions
+for the alias.
+
+Used for brevity;
+
+**:ReadWrite
+----
+For cases where
+some CRUD makes
+no sense;
+*** Update
+***:Read
+----
+Read includes List
+and Search where
+applicable;
+
+**:Manage
+----
+For cases that
+support full CRUD;
+*** Create
+*** Read
+*** Update
+*** Delete
+' Action Aliases End
+@endmindmap
