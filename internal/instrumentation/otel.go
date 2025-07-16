@@ -14,16 +14,16 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	otellog "go.opentelemetry.io/otel/log"
 	otelgloballog "go.opentelemetry.io/otel/log/global"
-	"go.opentelemetry.io/otel/propagation"
+	otelpropagation "go.opentelemetry.io/otel/propagation"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	sdkresource "go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
-	"go.opentelemetry.io/otel/trace"
+	otelsemconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
-var Tracer trace.Tracer
+var Tracer oteltrace.Tracer
 
 func initTracer() {
 	otelScopeName := "wallabago"
@@ -33,17 +33,17 @@ func initTracer() {
 		otelScopeName = buildInfo.Main.Path
 		otelScopeVersion = buildInfo.Main.Version
 	}
-	Tracer = otel.Tracer(otelScopeName, trace.WithInstrumentationVersion(otelScopeVersion))
+	Tracer = otel.Tracer(otelScopeName, oteltrace.WithInstrumentationVersion(otelScopeVersion))
 }
 
 func init() {
 	initTracer()
 }
 
-func newPropagator() propagation.TextMapPropagator {
-	return propagation.NewCompositeTextMapPropagator(
-		propagation.Baggage{},
-		propagation.TraceContext{},
+func newPropagator() otelpropagation.TextMapPropagator {
+	return otelpropagation.NewCompositeTextMapPropagator(
+		otelpropagation.Baggage{},
+		otelpropagation.TraceContext{},
 	)
 }
 
@@ -51,8 +51,8 @@ func newResource(ctx context.Context) (*sdkresource.Resource, error) {
 	baseResource, err := sdkresource.Merge(
 		sdkresource.Default(),
 		sdkresource.NewWithAttributes(
-			semconv.SchemaURL,
-			semconv.ServiceName("wallabago-api"),
+			otelsemconv.SchemaURL,
+			otelsemconv.ServiceName("wallabago-api"),
 		),
 	)
 	if err != nil {
@@ -98,14 +98,14 @@ func newMeterProvider(ctx context.Context, resource *sdkresource.Resource) (*sdk
 }
 
 // scopeInjectingSpanProcessor is a [sdklog.Processor]
-// that injects [instrumentation.Scope] via [attribute]s using [semconv].
+// that injects [instrumentation.Scope] via [attribute]s using [otelsemconv].
 type scopeInjectingLogProcessor struct{}
 
 func (lp *scopeInjectingLogProcessor) OnEmit(_ context.Context, record *sdklog.Record) error {
 	scope := record.InstrumentationScope()
 	record.SetAttributes(
-		otellog.String(string(semconv.OTelScopeNameKey), scope.Name),
-		otellog.String(string(semconv.OTelScopeVersionKey), scope.Version),
+		otellog.String(string(otelsemconv.OTelScopeNameKey), scope.Name),
+		otellog.String(string(otelsemconv.OTelScopeVersionKey), scope.Version),
 	)
 	return nil
 }
