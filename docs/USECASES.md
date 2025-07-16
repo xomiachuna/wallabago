@@ -32,6 +32,9 @@ form of [Activity Diagrams](https://en.wikipedia.org/wiki/Activity_diagram).
 
 ![Fetch entry](./diagrams/dist/fetch-entry-activity.svg)
 
+## Import From Wallabag
+![Import from Wallabag](./diagrams/dist/import-from-wallabag-activity.svg)
+
 ## Auth
 
 ![Auth](./diagrams/dist/auth-activity.svg)
