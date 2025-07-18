@@ -5,7 +5,7 @@ default: check
 check: check-quick
 
 .PHONY: check-quick
-check-quick: adr format lint diagrams test
+check-quick: adr format lint diagrams test tidy
 
 .PHONY: adr
 adr: generate-adr-toc generate-adr-graph 
@@ -45,6 +45,10 @@ format:
 test:
 	@go test ./...
 
+.PHONY: tidy
+tidy:
+	@go mod tidy 
+
 .PHONY: diagrams
 diagrams:
 	@docker run --rm -v ./docs:/docs plantuml/plantuml \
@@ -63,13 +67,13 @@ signoz-down:
 		down
 
 .PHONY: up
-up: signoz-up
+up: tidy format
 	@docker compose \
 		-f deployments/docker-compose/docker-compose.yaml \
 		up --build --force-recreate
 
 .PHONY: down
-down: signoz-down
+down: 
 	@docker compose \
 		-f deployments/docker-compose/docker-compose.yaml \
 		down 

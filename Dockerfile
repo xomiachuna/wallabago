@@ -17,11 +17,15 @@ RUN go mod download -x
 # copy the rest
 COPY . /app/
 
+ENV GOCACHE=/root/.cache/go-build
 # build an executable 
 # and then compress it with upx
-RUN CGOENABLED=1 GOOS=linux \
-    go build -C cmd/wallabago-api \
-        -o /app/server # && /tools/upx -v --best /app/server
+RUN --mount=type=cache,target="/root/.cache/go-build" CGOENABLED=1 GOOS=linux \
+    go build \
+        -C cmd/wallabago-api \
+        -buildvcs=false \
+        -o /app/server
+    # && /tools/upx -v --best /app/server
 
 # run tests
 FROM builder AS tester

@@ -1,3 +1,14 @@
+x-commons:
+  env: 
+    - &otel-traces-env
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://otel-collector:4317
+    - &otel-metrics-env
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: http://otel-collector:4317
+    - &otel-logs-env
+      OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: http://otel-collector:4317
+    - &db-env
+      DB: "postgresql://wallabago-api:wallabago@postgres:5432/wallabago-db?sslmode=disable"
+
 services:
   migrations:
     networks:
@@ -10,7 +21,11 @@ services:
     volumes:
       - ../../internal/migrations/:/migrations
     environment:
-      DB: "postgresql://wallabago-api:wallabago@postgres:5432/wallabago-db?sslmode=disable"
+      <<:
+        - *otel-traces-env
+        - *otel-metrics-env
+        - *otel-logs-env 
+        - *db-env
     entrypoint: ["/bin/sh", "-c", "migrate -path=/migrations/ -database $$DB up"]
 
   wallabago:
@@ -25,7 +40,11 @@ services:
     build: ../../
     restart: no
     environment:
-      DB: "postgresql://wallabago-api:wallabago@postgres:5432/wallabago-db?sslmode=disable"
+      <<:
+        - *otel-traces-env
+        - *otel-metrics-env
+        - *otel-logs-env 
+        - *db-env
     ports:
       - 7080:8080
 

@@ -34,3 +34,6 @@ go.work.sum
 deployments/
 docs/
 tools/
+
+# Exclude all .git content by default
+.git/*
