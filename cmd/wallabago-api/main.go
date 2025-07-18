@@ -8,10 +8,10 @@ import (
 )
 
 func main() {
-	server, err := http.NewServer()
+	server, err := http.NewApp()
 	if err != nil {
 		slog.Error("failed to create server", "cause", err)
 	}
-	slog.Error("Stopped server", "cause", server.Start())
+	slog.Error("Server stopped", "errorsDuringShutdown", server.Start())
 	os.Exit(1)
 }
