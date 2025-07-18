@@ -7,7 +7,7 @@ x-commons:
     - &otel-logs-env
       OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: http://otel-collector:4317
     - &db-env
-      DB: "postgresql://wallabago-api:wallabago@postgres:5432/wallabago-db?sslmode=disable"
+      DB: "postgresql://wallabago-api:wallabago@postgres:5432/wallabago-db?sslmode=disable&application_name=wallabago-api-client"
 
 services:
   migrations:
@@ -19,7 +19,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ../../internal/migrations/:/migrations
+      - ../../internal/database/migrations/:/migrations
     environment:
       <<:
         - *otel-traces-env

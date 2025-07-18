@@ -54,6 +54,13 @@ diagrams:
 	@docker run --rm -v ./docs:/docs plantuml/plantuml \
 		-tsvg -o /docs/diagrams/dist /docs/diagrams
 
+.PHONY: codegen
+codegen: sqlc
+
+.PHONY: sqlc
+sqlc:
+	@go tool sqlc generate
+
 .PHONY: signoz-up
 signoz-up:
 	@docker compose \
@@ -67,7 +74,7 @@ signoz-down:
 		down
 
 .PHONY: up
-up: tidy format
+up: tidy format codegen
 	@docker compose \
 		-f deployments/docker-compose/docker-compose.yaml \
 		up --build --force-recreate
