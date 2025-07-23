@@ -65,6 +65,7 @@ func (wb *App) Start() error {
 		}
 	}
 
+	// todo: pass db url as a parameter
 	dbPool, err := database.NewDBPool(rootCtx, os.Getenv("DB"))
 	if err != nil {
 		return errors.Wrap(err, "Failed to connect to db")

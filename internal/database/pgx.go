@@ -5,15 +5,25 @@ import (
 	"database/sql"
 	"log/slog"
 
-	_ "github.com/jackc/pgx/v5/stdlib" // pgx sql driver
+	"github.com/exaring/otelpgx"
+	"github.com/jackc/pgx/v5/pgxpool"
+	pgxstdlib "github.com/jackc/pgx/v5/stdlib" // pgx sql driver
 	"github.com/pkg/errors"
 )
 
 func NewDBPool(ctx context.Context, dbURL string) (*sql.DB, error) {
-	dbPool, err := sql.Open("pgx", dbURL)
+	cfg, err := pgxpool.ParseConfig(dbURL)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to setup db")
+		return nil, errors.WithStack(err)
 	}
+	cfg.ConnConfig.Tracer = otelpgx.NewTracer()
+
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	dbPool := pgxstdlib.OpenDBFromPool(pool)
 	err = dbPool.PingContext(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to setup db")

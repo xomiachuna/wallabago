@@ -3,6 +3,7 @@ module github.com/andriihomiak/wallabago
 go 1.24.1
 
 require (
+	github.com/exaring/otelpgx v0.9.3
 	github.com/jackc/pgx/v5 v5.7.4
 	github.com/pkg/errors v0.9.1
 	go.opentelemetry.io/contrib/bridges/otelslog v0.12.0
