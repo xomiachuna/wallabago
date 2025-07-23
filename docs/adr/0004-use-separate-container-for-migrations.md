@@ -6,6 +6,8 @@ Date: 2025-07-14
 
 Proposed
 
+Influences [10. Use golang-migrate for database migrations](0010-use-golang-migrate-for-database-migrations.md)
+
 ## Context
 
 There are two main ways to run migrations:
