@@ -1,4 +1,5 @@
 # `wallabago` documentation
+* [Architecture diagrams](./ARCHITECTURE.md)
 * [Use cases](./USECASES.md)
 * [Access Control Design](./ACCESSCONTROL.md)
 

@@ -27,8 +27,6 @@ mindmapDiagram {
 ----
 Administrative tasks
 not related to content;
-*** Settings
-**** ReadWrite
 *** Users
 **** Manage
 ****:ChangeAdminStatus

@@ -1,0 +1,127 @@
+@startuml architecture-components
+
+title Wallabago Components
+header component diagram
+
+!$Manager = "back:0a2239;text:LightGrey;line:white;line.dotted"
+!$Engine = "back:53a2be;text:Black"
+!$Storage = "back:1d84b5;text:Black"
+!$Persistence = "back:132e32;text:White;line:White"
+!$Cache = "back:176087;text:White;line:White"
+
+rectangle AdminManager #$Manager [
+    Admin Manager
+    ----
+    User Management
+]
+
+rectangle OAuth2Manager #$Manager [
+    OAuth2 Manager
+    ----
+    OAuth2
+]
+
+rectangle AuthEngine #$Engine [
+    Auth Engine
+    ----
+    AuthN & AuthZ
+    policy checks
+]
+
+rectangle AuthStorage #$Storage [
+    Auth Storage
+    ----
+    Store tokens
+]
+
+rectangle UserInfoStorage #$Storage [
+    User Info Storage
+    ----
+    Store account 
+    information
+]
+
+database UserInfoDB #$Persistence [
+    User Info DB
+    ----
+    SQL-based storage
+    for users
+]
+
+rectangle EntryManager #$Manager [
+    Entry Manager
+    ----
+    Entry CRUD
+    ....
+    Entry Conversion
+]
+
+rectangle RetrievalEngine #$Engine [
+    Retrieval Engine
+    ----
+    Retrieval of entries
+    from the URL
+]
+
+rectangle ConversionEngine #$Engine [
+    Conversion Engine
+    ----
+    Conversion of entries
+    between formats
+]
+
+database AuthDB #$Persistence [
+    Auth DB
+    ----
+    SQL-based storage 
+    for tokens
+]
+
+collections AuthCache #$Cache [
+    Auth Cache
+    ----
+    In-mem storage 
+    for tokens
+]
+
+rectangle EntryStorage #$Storage [
+    Entry Storage
+    ----
+    Store entries 
+    and files
+]
+
+database EntriesDB #$Persistence [
+    Entry DB
+    ----
+    SQL-based storage
+    for entry data
+]
+
+collections EntriesFileCache #$Cache [
+    File Cache
+    ----
+    Storage for caching
+    converted files
+]
+
+OAuth2Manager --> AuthEngine
+AuthEngine --> AuthStorage
+OAuth2Manager ---> AuthStorage
+OAuth2Manager ---> UserInfoStorage
+UserInfoStorage --> UserInfoDB
+AuthStorage --> AuthDB
+AuthStorage --> AuthCache
+
+EntryManager ---> EntryStorage
+EntryManager --> RetrievalEngine
+EntryManager --> ConversionEngine
+
+
+EntryStorage --> EntriesFileCache
+EntryStorage --> EntriesDB
+
+EntryManager --> AuthEngine
+
+AdminManager ---> UserInfoStorage
+@enduml
