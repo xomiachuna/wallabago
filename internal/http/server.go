@@ -29,14 +29,12 @@ func getDefaultMiddleware() middleware.Middleware {
 	)
 }
 
-func newMux(querier database.Querier) *http.ServeMux {
+func newRootHandler(querier database.Querier) http.Handler {
 	innerMux := http.NewServeMux()
 	service := handlers.NewService(querier)
 	innerMux.HandleFunc("/", service.Index)
 	globalMiddleware := getDefaultMiddleware()
-	outerMux := http.NewServeMux()
-	outerMux.Handle("/", globalMiddleware.Wrap(innerMux))
-	return outerMux
+	return globalMiddleware.Wrap(innerMux)
 }
 
 func (wb *App) Start() error {
@@ -80,11 +78,11 @@ func (wb *App) Start() error {
 
 	querier := database.New(dbPool)
 
-	mux := newMux(querier)
+	rootHandler := newRootHandler(querier)
 	server := &http.Server{
 		// TODO: pass from outside?
 		Addr:    ":8080",
-		Handler: mux,
+		Handler: rootHandler,
 		// the context here is the one cancellable by interrupt
 		BaseContext: func(_ net.Listener) context.Context { return rootCtx },
 		// preventing slowloris attack as advised by gosec - increase if needed
