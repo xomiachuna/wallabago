@@ -1,0 +1,25 @@
+@startuml auth-activity
+header activity
+title Check Auth for given action
+
+start
+:User provides **credentials**
+and the **intended action**;
+[[authn-activity.svg]]#yellow:Check if credentials\npass AuthN;
+if (Pass?) then (yes)
+    [[authz-activity.svg]]#yellow:Check if user\npasses AuthZ;
+    if (Pass?) then (yes)
+    else (no)
+        #red:Action forbidden;
+        note: HTTP 403
+        end
+    endif
+else (no)
+    #red:User unauthorized;
+    note right: HTTP 401
+    end
+endif
+#green:User passed Auth
+for the given action;
+stop
+@enduml

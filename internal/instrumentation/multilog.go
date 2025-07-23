@@ -1,6 +1,6 @@
 // Source: https://github.com/golang/go/issues/65954#issuecomment-2786268756
 // This is an alternative to using slog-multi for fanout
-package main
+package instrumentation
 
 import (
 	"context"

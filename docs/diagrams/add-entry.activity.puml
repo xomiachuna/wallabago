@@ -1,0 +1,20 @@
+@startuml add-entry-activity
+header activity
+title Add Entry
+
+start
+[[auth-activity.svg]]#yellow:User passes Auth\nfor creating entry;
+:Compute hash of
+the entry URL;
+if (Entry with this hash exists?) then (yes)
+else (no)
+    [[fetch-entry-activity.svg]]#yellow:Fetch entry;
+    if (Success?) then (yes)
+    else (no)
+        #red:Show fetch error;
+        end
+    endif
+endif
+#green:Show entry;
+stop
+@enduml

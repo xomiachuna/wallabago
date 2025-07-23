@@ -1,0 +1,20 @@
+@startuml export-entry-activity
+header activity
+title Export Entry
+
+start
+[[auth-activity.svg]]#yellow:User passes Auth\nfor exporting entry;
+:Check if the entry has
+already been converted to the
+requested format before;
+if (Converted version exists?) then (yes)
+else (no)
+:Convert the simplified
+entry content to the
+requested format;
+:Save the converted entry
+file for reuse;
+endif
+#green:Show the converted entry;
+stop
+@enduml

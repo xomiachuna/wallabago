@@ -1,0 +1,15 @@
+@startuml tag-entry-activity
+header activity
+title Tag Entry
+
+start
+[[auth-activity.svg]]#yellow:User passes Auth\nfor editing entry;
+if (Entry exists?) then (yes)
+    :Update entry tags; 
+    #green:Show entry;
+    stop
+else (no)
+    #red:Missing entry error;
+    end
+endif
+@enduml

@@ -1,0 +1,21 @@
+@startuml refetch-entry-activity
+header activity
+title Refetch Entry
+
+start
+[[auth-activity.svg]]#yellow:User passes Auth\nfor editing entry;
+:User provides an entry ID;
+if (Entry with this ID exists?) then (yes)
+    [[fetch-entry.activity.puml]]#yellow:Fetch entry;
+    if (Success?) then (yes)
+    #green:Show the entry;
+    stop
+    else (no)
+        #red:Show fetch error;
+        end
+    endif
+else (no)
+    #red:Show entry missing error;
+    end
+endif
+@enduml

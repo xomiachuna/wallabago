@@ -1,0 +1,18 @@
+@startuml remove-entry-activity
+header activity
+title Remove Entry
+
+start
+[[auth-activity.svg]]#yellow:User passes Auth\nfor removing entry;
+:User provides an entry ID;
+if (Entry with this ID exists?) then (yes)
+    :Remove the entry;
+    #green:Respond with the 
+    contents of the entry
+    (if requested);
+    stop
+else (no)
+    #red:Show entry missing error;
+    end
+endif
+@enduml

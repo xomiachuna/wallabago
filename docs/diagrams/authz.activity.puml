@@ -1,0 +1,20 @@
+@startuml authz-activity
+header activity
+title Check if user passes\nAuthZ for action
+
+start
+:Retrieve user Authz;
+if (User is admin?) then (yes)
+    #green:User passes Authz;
+    stop
+else (no)
+endif
+if (User is granted\npermission to perform action?) then (yes)
+    #green:User passes Authz;
+    stop
+else (no)
+    #red:User did not pass Authz;
+    stop
+endif
+
+@enduml

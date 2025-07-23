@@ -1,0 +1,19 @@
+@startuml authn-activity
+header activity
+title Check if credentials\npass AuthN
+
+start
+if (Are credentials valid?) then (yes)
+    if (User exists?) then (yes)
+        if (Have credentials\nbeen revoked?) then (no)
+            #green:AuthN passed;
+            stop
+        else (yes)
+        endif
+    else (no)
+    endif
+else (no)
+endif
+#red:AuthN failed;
+stop
+@enduml

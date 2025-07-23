@@ -1,0 +1,30 @@
+@startuml import-from-wallabag-activity
+header activity
+title Import From Wallabag
+
+start
+[[auth-activity.svg]]#yellow:User passes Auth\nfor creating entry;
+:User Provides a link to the
+Wallabag API and credentials for it;
+:Check if provided credentials are valid
+for the provided Wallabag instance;
+if (Credentials valid?) then (yes)
+else (no)
+    #red:Show import error;
+    end
+endif
+
+:Get entries from Wallabag;
+
+while (Entries remain?)
+    :Compute hash of
+    the next entry URL;
+    if (Entry with this hash exists?) then (yes)
+    else (no)
+        :Save the content
+        from the imported entry;
+    endif
+endwhile
+#green:Show imported entries;
+stop
+@enduml

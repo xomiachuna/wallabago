@@ -1,0 +1,21 @@
+@startuml fetch-entry-activity
+header activity
+title Fetch Entry
+
+start
+#yellow:Retrieve the
+entry contents*;
+if (Retrieval success?) then (yes)
+    #yellow:Simplify entry content*;
+    if (Simplification success?) then (yes)
+        #green:Entry fetched;
+        stop
+    else (no)
+        #red:Conversion error;
+        stop
+    endif
+else (no)
+    #red:Retrieval error;
+    stop
+endif
+@enduml
