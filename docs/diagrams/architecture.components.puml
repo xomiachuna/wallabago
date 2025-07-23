@@ -52,8 +52,13 @@ rectangle EntryManager #$Manager [
     Entry Manager
     ----
     Entry CRUD
-    ....
-    Entry Conversion
+]
+
+rectangle ConversionManager #$Manager [
+    Conversion Manager
+    ----
+    Entry conversion
+    to EPUB etc.
 ]
 
 rectangle RetrievalEngine #$Engine [
@@ -113,15 +118,17 @@ UserInfoStorage --> UserInfoDB
 AuthStorage --> AuthDB
 AuthStorage --> AuthCache
 
-EntryManager ---> EntryStorage
+EntryManager --> AuthEngine
 EntryManager --> RetrievalEngine
-EntryManager --> ConversionEngine
+EntryManager ---> EntryStorage
 
+ConversionManager --> ConversionEngine
+ConversionManager --> AuthEngine
+ConversionManager ---> EntryStorage
 
 EntryStorage --> EntriesFileCache
 EntryStorage --> EntriesDB
 
-EntryManager --> AuthEngine
-
+AdminManager --> AuthEngine
 AdminManager ---> UserInfoStorage
 @enduml
