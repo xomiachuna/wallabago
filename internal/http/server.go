@@ -19,7 +19,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-type App struct{}
+type App struct {
+	instrumentationEnabled bool
+}
 
 func getDefaultMiddleware() middleware.Middleware {
 	return middleware.NewChain(
@@ -47,9 +49,20 @@ func (wb *App) Start() error {
 	)
 	defer stopListeningForInterrupt()
 
-	shutdownOtel, err := instrumentation.SetupOtelSDK(rootCtx)
-	if err != nil {
-		return errors.Wrap(err, "Failed to setup otel")
+	var shutdownOtel func(context.Context) error
+	var err error
+
+	if wb.instrumentationEnabled {
+		shutdownOtel, err = instrumentation.SetupOtelSDK(rootCtx)
+		if err != nil {
+			return errors.Wrap(err, "Failed to setup otel")
+		}
+	} else {
+		slog.Warn("Otel instrumentation is not enabled")
+		shutdownOtel = func(_ context.Context) error {
+			slog.Warn("Otel instrumentation is not enabled, nothing to cleanup")
+			return nil
+		}
 	}
 
 	dbPool, err := database.NewDBPool(rootCtx, os.Getenv("DB"))
@@ -119,5 +132,7 @@ func (wb *App) Start() error {
 }
 
 func NewApp() (*App, error) {
-	return &App{}, nil
+	return &App{
+		instrumentationEnabled: true,
+	}, nil
 }
