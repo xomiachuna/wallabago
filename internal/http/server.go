@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"database/sql"
 	"log/slog"
 	"net"
 	"net/http"
@@ -15,33 +14,27 @@ import (
 
 	"github.com/andriihomiak/wallabago/internal/database"
 	"github.com/andriihomiak/wallabago/internal/http/handlers"
+	"github.com/andriihomiak/wallabago/internal/http/middleware"
 	"github.com/andriihomiak/wallabago/internal/instrumentation"
-	_ "github.com/jackc/pgx/v5/stdlib" // pgx sql driver
 	"github.com/pkg/errors"
 )
 
 type App struct{}
 
-func newMux(querier database.Querier) *http.ServeMux {
-	mux := http.NewServeMux()
-
-	service := handlers.NewService(querier)
-
-	mux.HandleFunc("/", service.Index)
-	return mux
+func getDefaultMiddleware() middleware.Middleware {
+	return middleware.NewChain(
+		middleware.NewOtelHTTPMiddleware(),
+	)
 }
 
-func newDBPool(ctx context.Context, dbURL string) (*sql.DB, error) {
-	dbPool, err := sql.Open("pgx", dbURL)
-	if err != nil {
-		return nil, errors.Wrap(err, "Failed to setup db")
-	}
-	err = dbPool.PingContext(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "Failed to setup db")
-	}
-	slog.Info("Connected to db", "dbUrl", dbURL)
-	return dbPool, nil
+func newMux(querier database.Querier) *http.ServeMux {
+	innerMux := http.NewServeMux()
+	service := handlers.NewService(querier)
+	innerMux.HandleFunc("/", service.Index)
+	globalMiddleware := getDefaultMiddleware()
+	outerMux := http.NewServeMux()
+	outerMux.Handle("/", globalMiddleware.Wrap(innerMux))
+	return outerMux
 }
 
 func (wb *App) Start() error {
@@ -59,14 +52,16 @@ func (wb *App) Start() error {
 		return errors.Wrap(err, "Failed to setup otel")
 	}
 
-	dbPool, err := newDBPool(rootCtx, os.Getenv("DB"))
+	dbPool, err := database.NewDBPool(rootCtx, os.Getenv("DB"))
 	if err != nil {
 		return errors.Wrap(err, "Failed to connect to db")
 	}
 
 	shutdownDb := func() error {
 		slog.Warn("Closing db pool")
-		return dbPool.Close()
+		closeErr := dbPool.Close()
+		slog.Warn("FB pool closed")
+		return closeErr
 	}
 
 	querier := database.New(dbPool)
@@ -98,6 +93,7 @@ func (wb *App) Start() error {
 		slog.Warn("Shutting down otel")
 		otelShutdownCtx := context.TODO()
 		otelShutdownErr := errors.Wrap(shutdownOtel(otelShutdownCtx), "errors during otel shutdown")
+		// shutdown db as well
 		return stderrors.Join(shutdownDb(), otelShutdownErr, err)
 
 	case <-rootCtx.Done():
@@ -117,6 +113,7 @@ func (wb *App) Start() error {
 		otelShutdownErr := errors.Wrap(shutdownOtel(otelShutdownCtx), "error during otel shutdown")
 		slog.Warn("Otel shut down finished", "errorDuringShutdown", otelShutdownErr)
 
+		// shutdown db as well
 		return stderrors.Join(shutdownDb(), otelShutdownErr, serverShutdownErr)
 	}
 }
