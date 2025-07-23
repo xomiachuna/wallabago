@@ -31,7 +31,7 @@ rectangle AuthEngine #$Engine [
 rectangle AuthStorage #$Storage [
     Auth Storage
     ----
-    Store tokens
+    Store tokens and permissions
 ]
 
 rectangle UserInfoStorage #$Storage [
@@ -74,7 +74,7 @@ database AuthDB #$Persistence [
     Auth DB
     ----
     SQL-based storage 
-    for tokens
+    for tokens and permissions
 ]
 
 collections AuthCache #$Cache [
