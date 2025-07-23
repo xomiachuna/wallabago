@@ -22,7 +22,8 @@ roughly satisfies the following criteria:
 
 > [!NOTE]
 > 
-> This is mostly based on personal preference
+> This is mostly based on personal preference: change is inevitable, minimizing blast
+> radius of it simplifies the development process due to pragmatic design to encapsulate it
 
 ## Decision
 
