@@ -16,3 +16,4 @@ This is a template injected as an intro to the ADR toc in README.md
 * [8. Use PostgreSQL database](0008-use-postgresql-database.md)
 * [9. Use sqlc for database query codegen](0009-use-sqlc-for-database-query-codegen.md)
 * [10. Use golang-migrate for database migrations](0010-use-golang-migrate-for-database-migrations.md)
+* [11. Design around volatility encapsulation](0011-design-around-volatility-encapsulation.md)
