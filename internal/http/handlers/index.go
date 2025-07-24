@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/andriihomiak/wallabago/internal/http/constants"
-	"github.com/pkg/errors"
 )
 
 // todo: use template/html
@@ -22,15 +21,10 @@ const indexPage = `<!DOCTYPE html>
     </body>
 </html>`
 
-func (s *TimeService) Index(w http.ResponseWriter, r *http.Request) {
-	timestamp, err := s.querier.CurrentTimestamp(r.Context())
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Header().Set(constants.HeaderContentType, constants.MimeTextPlain)
-		fmt.Fprintf(w, "Error: %s", errors.WithStack(err))
-		return
-	}
+type Index struct{}
+
+func (s *Index) Index(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set(constants.HeaderContentType, constants.MimeTextHTML)
-	fmt.Fprintf(w, indexPage, timestamp.UTC().Format(time.Layout))
+	fmt.Fprintf(w, indexPage, time.Now().UTC().Format(time.Layout))
 }
