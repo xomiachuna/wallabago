@@ -8,7 +8,19 @@ header component diagram
 !$Storage = "back:1d84b5;text:Black"
 !$Persistence = "back:132e32;text:White;line:White"
 !$Cache = "back:176087;text:White;line:White"
+!$Middleware = "back:176087;text:White;line:White"
+' Middleware
+agent AuthNMiddleware #$Middleware [
+    AuthN Middleware
+    ----
+    Authentication checks for
+    protected resources
+    ....
+    Used before
+    every protected Manager
+]
 
+' Managers
 rectangle AdminManager #$Manager [
     Admin Manager
     ----
@@ -18,34 +30,7 @@ rectangle AdminManager #$Manager [
 rectangle OAuth2Manager #$Manager [
     OAuth2 Manager
     ----
-    OAuth2
-]
-
-rectangle AuthEngine #$Engine [
-    Auth Engine
-    ----
-    AuthN & AuthZ
-    policy checks
-]
-
-rectangle AuthStorage #$Storage [
-    Auth Storage
-    ----
-    Store tokens and permissions
-]
-
-rectangle UserInfoStorage #$Storage [
-    User Info Storage
-    ----
-    Store account 
-    information
-]
-
-database UserInfoDB #$Persistence [
-    User Info DB
-    ----
-    SQL-based storage
-    for users
+    OAuth2 token API
 ]
 
 rectangle EntryManager #$Manager [
@@ -59,6 +44,14 @@ rectangle ConversionManager #$Manager [
     ----
     Entry conversion
     to EPUB etc.
+]
+
+' Engine
+
+rectangle AuthZEngine #$Engine [
+    AuthZ Engine
+    ----
+    AuthZ policy checks
 ]
 
 rectangle RetrievalEngine #$Engine [
@@ -75,18 +68,19 @@ rectangle ConversionEngine #$Engine [
     between formats
 ]
 
-database AuthDB #$Persistence [
-    Auth DB
+' Storage
+
+rectangle TokenStorage #$Storage [
+    Token Storage
     ----
-    SQL-based storage 
-    for tokens and permissions
+    Store tokens 
 ]
 
-collections AuthCache #$Cache [
-    Auth Cache
+rectangle UserInfoStorage #$Storage [
+    User Info Storage
     ----
-    In-mem storage 
-    for tokens
+    Store account 
+    information 
 ]
 
 rectangle EntryStorage #$Storage [
@@ -95,6 +89,30 @@ rectangle EntryStorage #$Storage [
     Store entries 
     and files
 ]
+
+' Data
+
+database UserInfoDB #$Persistence [
+    User Info DB
+    ----
+    SQL-based storage
+    for user accounts
+]
+
+database TokenDB #$Persistence [
+    Token DB
+    ----
+    SQL-based storage 
+    for tokens 
+]
+
+collections TokenCache #$Cache [
+    Token Cache
+    ----
+    In-mem storage 
+    for tokens
+]
+
 
 database EntriesDB #$Persistence [
     Entry DB
@@ -110,25 +128,39 @@ collections EntriesFileCache #$Cache [
     converted files
 ]
 
-OAuth2Manager --> AuthEngine
-AuthEngine --> AuthStorage
-OAuth2Manager ---> AuthStorage
-OAuth2Manager ---> UserInfoStorage
-UserInfoStorage --> UserInfoDB
-AuthStorage --> AuthDB
-AuthStorage --> AuthCache
+' Connections
+' Middleware
+AuthNMiddleware ----> TokenStorage
+AuthNMiddleware ----> UserInfoStorage
 
-EntryManager --> AuthEngine
+AuthNMiddleware .. AdminManager
+AuthNMiddleware .. EntryManager
+AuthNMiddleware .. ConversionManager
+
+' Managers
 EntryManager --> RetrievalEngine
+EntryManager --> AuthZEngine
 EntryManager ---> EntryStorage
 
+OAuth2Manager ---> TokenStorage
+OAuth2Manager ---> UserInfoStorage
+
+AdminManager --> AuthZEngine
+AdminManager ---> UserInfoStorage
+
 ConversionManager --> ConversionEngine
-ConversionManager --> AuthEngine
+ConversionManager --> AuthZEngine
 ConversionManager ---> EntryStorage
 
+' Engines
+AuthZEngine --> UserInfoStorage
+
+' Storage
 EntryStorage --> EntriesFileCache
 EntryStorage --> EntriesDB
 
-AdminManager --> AuthEngine
-AdminManager ---> UserInfoStorage
+UserInfoStorage --> UserInfoDB
+
+TokenStorage --> TokenDB
+TokenStorage --> TokenCache
 @enduml
