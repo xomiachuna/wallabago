@@ -36,6 +36,42 @@ func requiredPostFormField(r *http.Request, key string) (string, error) {
 	return r.PostForm.Get(key), nil
 }
 
+func (h *OAuth2Handler) handlePasswordFlow(w http.ResponseWriter, r *http.Request) {
+	// todo: parse params into a struct
+	clientID, requiredErr := requiredPostFormField(r, OAuth2ClientID)
+	if requiredErr != nil {
+		RespondErrorPlain(w, r, requiredErr, http.StatusBadRequest)
+		return
+	}
+	clientSecret, requiredErr := requiredPostFormField(r, OAuth2ClientSecret)
+	if requiredErr != nil {
+		RespondErrorPlain(w, r, requiredErr, http.StatusBadRequest)
+		return
+	}
+	username, requiredErr := requiredPostFormField(r, OAuth2Username)
+	if requiredErr != nil {
+		RespondErrorPlain(w, r, requiredErr, http.StatusBadRequest)
+		return
+	}
+
+	password, requiredErr := requiredPostFormField(r, OAuth2Password)
+	if requiredErr != nil {
+		RespondErrorPlain(w, r, requiredErr, http.StatusBadRequest)
+		return
+	}
+
+	token, err := h.manager.PasswordFlow(r.Context(), clientID, clientSecret, username, password)
+	if err != nil {
+		var authError auth.AuthError
+		if errors.As(err, authError) {
+			RespondJSON(w, r, authError, http.StatusUnauthorized)
+			return
+		}
+		RespondInternalErrorWithStack(w, r, err)
+	}
+	RespondOKJSON(w, r, token)
+}
+
 func (h *OAuth2Handler) TokenEndpoint(w http.ResponseWriter, r *http.Request) {
 	if mediaType := r.Header.Get(constants.HeaderContentType); mediaType != constants.MimeApplicationXWWWFormURLEncoded {
 		RespondErrorPlain(w, r, fmt.Errorf("unsupported media type: %s", mediaType), http.StatusUnsupportedMediaType)
@@ -53,39 +89,7 @@ func (h *OAuth2Handler) TokenEndpoint(w http.ResponseWriter, r *http.Request) {
 		RespondErrorPlain(w, r, fmt.Errorf("required field: %s", OAuth2GrantType), http.StatusBadRequest)
 		return
 	case auth.GrantTypePassword:
-
-		clientID, err := requiredPostFormField(r, OAuth2ClientID)
-		if err != nil {
-			RespondErrorPlain(w, r, err, http.StatusBadRequest)
-			return
-		}
-		clientSecret, err := requiredPostFormField(r, OAuth2ClientSecret)
-		if err != nil {
-			RespondErrorPlain(w, r, err, http.StatusBadRequest)
-			return
-		}
-		username, err := requiredPostFormField(r, OAuth2Username)
-		if err != nil {
-			RespondErrorPlain(w, r, err, http.StatusBadRequest)
-			return
-		}
-
-		password, err := requiredPostFormField(r, OAuth2Password)
-		if err != nil {
-			RespondErrorPlain(w, r, err, http.StatusBadRequest)
-			return
-		}
-
-		token, err := h.manager.PasswordFlow(r.Context(), clientID, clientSecret, username, password)
-		if err != nil {
-			var authError auth.AuthError
-			if errors.As(err, authError) {
-				RespondJSON(w, r, authError, http.StatusUnauthorized)
-				return
-			}
-			RespondInternalErrorWithStack(w, r, err)
-		}
-		RespondOKJSON(w, r, token)
+		h.handlePasswordFlow(w, r)
 		return
 	default:
 		RespondInternalErrorWithStack(w, r, fmt.Errorf("grant type '%s' is not implemented", grantType))
