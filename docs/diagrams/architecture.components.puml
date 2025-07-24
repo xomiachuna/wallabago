@@ -3,14 +3,47 @@
 title Wallabago Components
 header component diagram
 
+' Styles
 !$Manager = "back:0a2239;text:LightGrey;line:white;line.dotted"
 !$Engine = "back:53a2be;text:Black"
 !$Storage = "back:1d84b5;text:Black"
 !$Persistence = "back:132e32;text:White;line:White"
 !$Cache = "back:176087;text:White;line:White"
-!$Middleware = "back:176087;text:White;line:White"
+!$Middleware = "back:105080;text:White;line:White"
+!$API = "back:176087;text:White;line:White"
+
+' Clients
+actor User [
+    User
+]
+
+component KOReader [
+    KOReader
+    ....
+    Kindle App
+]
+
+component WallabagAndroid [
+    Wallabag
+    ....
+    Android App
+]
+
+' API
+rectangle HTTPAPI #$API [
+    Wallabago HTTP API
+    ----
+    HTTP handlers
+]
+
+rectangle WebUI #$API [
+    Wallabago Web UI
+    ----
+    HTMX Web App
+]
+
 ' Middleware
-agent AuthNMiddleware #$Middleware [
+process AuthNMiddleware #$Middleware [
     AuthN Middleware
     ----
     Authentication checks for
@@ -129,13 +162,23 @@ collections EntriesFileCache #$Cache [
 ]
 
 ' Connections
+User -> KOReader
+KOReader --> HTTPAPI
+User --> WebUI
+User -> WallabagAndroid
+WallabagAndroid --> HTTPAPI
+' API
+WebUI -> HTTPAPI
+
+HTTPAPI --> AuthNMiddleware
+HTTPAPI ---> OAuth2Manager
+HTTPAPI ---> AdminManager
+HTTPAPI ---> ConversionManager
+HTTPAPI ---> EntryManager
+
 ' Middleware
 AuthNMiddleware ----> TokenStorage
 AuthNMiddleware ----> UserInfoStorage
-
-AuthNMiddleware .. AdminManager
-AuthNMiddleware .. EntryManager
-AuthNMiddleware .. ConversionManager
 
 ' Managers
 EntryManager --> RetrievalEngine
