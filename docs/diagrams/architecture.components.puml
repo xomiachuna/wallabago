@@ -28,7 +28,8 @@ component WallabagAndroid [
     ....
     Android App
 ]
-component CoreApplication {
+
+component Wallabago {
     ' API
     rectangle HTTPAPI #$API [
         Wallabago HTTP API
@@ -130,46 +131,45 @@ component CoreApplication {
             for entry data
         ]
     }
-}
-
-component IdentityProvider {
-    rectangle IdentityManager #$Manager [
-        Identity Manager
-        ----
-        Handles Authentication
-        ....
-        Provides claims
-        about authenticated user
-        [UserId, Email]
-    ]
-
-    rectangle TokenStorage #$Storage [
-        Token Storage
-        ----
-        Store tokens 
-    ]
-
-    rectangle UserInfoStorage #$Storage [
-        User Info Storage
-        ----
-        Store identity information
-    ]
-    database IdentityDatabase #$Persistence {
-        collections UserInfo [
-            User Info
+    component IdentityProvider {
+        rectangle IdentityManager #$Manager [
+            Identity Manager
             ----
-            SQL-based storage
-            for user accounts
+            Handles Authentication
             ....
-            [UserID, Email, Passwords]
+            Provides claims
+            about authenticated user
+            [UserId, Email]
         ]
 
-        collections Tokens  [
-            Tokens
+        rectangle TokenStorage #$Storage [
+            Token Storage
             ----
-            SQL-based storage 
-            for tokens 
+            Store tokens 
         ]
+
+        rectangle UserInfoStorage #$Storage [
+            User Info Storage
+            ----
+            Store identity information
+        ]
+        database IdentityDatabase #$Persistence {
+            collections UserInfo [
+                User Info
+                ----
+                SQL-based storage
+                for user accounts
+                ....
+                [UserID, Email, Passwords]
+            ]
+
+            collections Tokens  [
+                Tokens
+                ----
+                SQL-based storage 
+                for tokens 
+            ]
+        }
     }
 }
 
