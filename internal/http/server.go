@@ -29,12 +29,14 @@ func getDefaultMiddleware() middleware.Middleware {
 	)
 }
 
-func newRootHandler(querier database.Querier) http.Handler {
-	innerMux := http.NewServeMux()
-	service := handlers.NewService(querier)
-	innerMux.HandleFunc("/", service.Index)
+func newRootHandler() http.Handler {
+	mux := http.NewServeMux()
+	service := handlers.Index{}
+	oauth2 := handlers.OAuth2Handler{}
+	mux.HandleFunc("/", service.Index)
+	mux.HandleFunc("POST /oauth/v2/token", oauth2.TokenEndpoint)
 	globalMiddleware := getDefaultMiddleware()
-	return globalMiddleware.Wrap(innerMux)
+	return globalMiddleware.Wrap(mux)
 }
 
 func (wb *App) Start() error {
@@ -76,9 +78,9 @@ func (wb *App) Start() error {
 		return closeErr
 	}
 
-	querier := database.New(dbPool)
+	_ = database.New(dbPool)
 
-	rootHandler := newRootHandler(querier)
+	rootHandler := newRootHandler()
 	server := &http.Server{
 		// TODO: pass from outside?
 		Addr:    ":8080",
