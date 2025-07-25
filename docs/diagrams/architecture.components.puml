@@ -125,41 +125,28 @@ rectangle EntryStorage #$Storage [
 
 ' Data
 
-database UserInfoDB #$Persistence [
-    User Info DB
-    ----
-    SQL-based storage
-    for user accounts
-]
+database SQLDatabase #$Persistence {
+    collections UserInfo [
+        User Info
+        ----
+        SQL-based storage
+        for user accounts
+    ]
 
-database TokenDB #$Persistence [
-    Token DB
-    ----
-    SQL-based storage 
-    for tokens 
-]
+    collections Tokens  [
+        Tokens
+        ----
+        SQL-based storage 
+        for tokens 
+    ]
 
-collections TokenCache #$Cache [
-    Token Cache
-    ----
-    In-mem storage 
-    for tokens
-]
-
-
-database EntriesDB #$Persistence [
-    Entry DB
-    ----
-    SQL-based storage
-    for entry data
-]
-
-collections EntriesFileCache #$Cache [
-    File Cache
-    ----
-    Storage for caching
-    converted files
-]
+    collections Entries [
+        Entries
+        ----
+        SQL-based storage
+        for entry data
+    ]
+}
 
 ' Connections
 User -> KOReader
@@ -199,11 +186,9 @@ ConversionManager ---> EntryStorage
 AuthZEngine --> UserInfoStorage
 
 ' Storage
-EntryStorage --> EntriesFileCache
-EntryStorage --> EntriesDB
+EntryStorage --> Entries
 
-UserInfoStorage --> UserInfoDB
+UserInfoStorage --> UserInfo
 
-TokenStorage --> TokenDB
-TokenStorage --> TokenCache
+TokenStorage --> Tokens
 @enduml
