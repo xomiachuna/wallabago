@@ -142,17 +142,12 @@ component Wallabago {
             [UserId, Email]
         ]
 
-        rectangle TokenStorage #$Storage [
-            Token Storage
+        rectangle IdentityStorage #$Storage [
+            Identity Storage
             ----
-            Store tokens 
+            Store identity-related info
         ]
 
-        rectangle UserInfoStorage #$Storage [
-            User Info Storage
-            ----
-            Store identity information
-        ]
         database IdentityDatabase #$Persistence {
             collections UserInfo [
                 User Info
@@ -168,6 +163,13 @@ component Wallabago {
                 ----
                 SQL-based storage 
                 for tokens 
+            ]
+
+            collections Clients [
+                Cleints
+                ----
+                Storage for client 
+                credentials
             ]
         }
     }
@@ -212,10 +214,10 @@ EntryStorage --> Entries
 
 UserStorage --> Users
 
-TokenStorage --> Tokens
 
 ' IdentityManager
-IdentityManager ---> TokenStorage
-IdentityManager ---> UserInfoStorage
-UserInfoStorage --> UserInfo
+IdentityManager ---> IdentityStorage
+IdentityStorage --> UserInfo
+IdentityStorage --> Clients
+IdentityStorage --> Tokens
 @enduml

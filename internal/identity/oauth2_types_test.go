@@ -1,37 +1,37 @@
-package auth_test
+package identity_test
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/andriihomiak/wallabago/internal/auth"
+	"github.com/andriihomiak/wallabago/internal/identity"
 )
 
 func TestNewScope(t *testing.T) {
 	cases := []struct {
-		scopeNames    []auth.ScopeName
+		scopeNames    []identity.ScopeName
 		shouldSucceed bool
 		expectedValue string
 	}{
 		{
-			scopeNames:    []auth.ScopeName{auth.ScopeName("entries")},
+			scopeNames:    []identity.ScopeName{identity.ScopeName("entries")},
 			shouldSucceed: true,
 			expectedValue: "entries",
 		},
 		{
-			scopeNames:    []auth.ScopeName{},
+			scopeNames:    []identity.ScopeName{},
 			shouldSucceed: true,
 			expectedValue: "",
 		},
 		{
-			scopeNames:    []auth.ScopeName{auth.ScopeName("bad")},
+			scopeNames:    []identity.ScopeName{identity.ScopeName("bad")},
 			shouldSucceed: false,
 			expectedValue: "",
 		},
 	}
 	for i, testCase := range cases {
 		t.Run(fmt.Sprintf("TestNewScope_%d_%#v", i, testCase.scopeNames), func(t *testing.T) {
-			result, err := auth.NewScope(testCase.scopeNames...)
+			result, err := identity.NewScope(testCase.scopeNames...)
 			if err != nil {
 				if testCase.shouldSucceed {
 					t.Fatalf("Should succeed without error")
@@ -43,7 +43,7 @@ func TestNewScope(t *testing.T) {
 				if result == nil {
 					t.Fatalf("Scope should not be nil in case of no error")
 				}
-				if *result != auth.Scope(testCase.expectedValue) {
+				if *result != identity.Scope(testCase.expectedValue) {
 					t.Fatalf("Expected %#v but got %#v", testCase.expectedValue, *result)
 				}
 			}

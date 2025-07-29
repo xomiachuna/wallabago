@@ -3,6 +3,3 @@
 //   sqlc v1.29.0
 
 package database
-
-type Entry struct {
-}

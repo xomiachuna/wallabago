@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"database/sql"
 	"log/slog"
 	"net"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"github.com/andriihomiak/wallabago/internal/database"
 	"github.com/andriihomiak/wallabago/internal/http/handlers"
 	"github.com/andriihomiak/wallabago/internal/http/middleware"
+	identityHandlers "github.com/andriihomiak/wallabago/internal/identity/handlers"
 	"github.com/andriihomiak/wallabago/internal/instrumentation"
 	"github.com/pkg/errors"
 )
@@ -29,12 +31,15 @@ func getDefaultMiddleware() middleware.Middleware {
 	)
 }
 
-func newRootHandler() http.Handler {
+func newRootHandler(_, identityDBPool *sql.DB) http.Handler {
 	mux := http.NewServeMux()
-	service := handlers.Index{}
-	oauth2 := handlers.OAuth2Handler{}
-	mux.HandleFunc("/", service.Index)
+
+	oauth2 := identityHandlers.NewOAuth2HandlerFromDBPool(identityDBPool)
 	mux.HandleFunc("POST /oauth/v2/token", oauth2.TokenEndpoint)
+
+	service := handlers.Index{}
+	mux.HandleFunc("/", service.Index)
+
 	globalMiddleware := getDefaultMiddleware()
 	return globalMiddleware.Wrap(mux)
 }
@@ -78,9 +83,8 @@ func (wb *App) Start() error {
 		return closeErr
 	}
 
-	_ = database.New(dbPool)
-
-	rootHandler := newRootHandler()
+	// todo: use separate db pools?
+	rootHandler := newRootHandler(dbPool, dbPool)
 	server := &http.Server{
 		// TODO: pass from outside?
 		Addr:    ":8080",
