@@ -3,3 +3,8 @@
 //   sqlc v1.29.0
 
 package database
+
+type WallabagoBootstrap struct {
+	ConditionName string
+	Satisfied     bool
+}

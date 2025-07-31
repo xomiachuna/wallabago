@@ -6,11 +6,11 @@ package database
 
 import (
 	"context"
-	"time"
 )
 
 type Querier interface {
-	CurrentTimestamp(ctx context.Context) (time.Time, error)
+	GetBoostrapConditions(ctx context.Context) ([]*WallabagoBootstrap, error)
+	MarkBootstrapConditionSatisfied(ctx context.Context, conditionName string) (*WallabagoBootstrap, error)
 }
 
 var _ Querier = (*Queries)(nil)

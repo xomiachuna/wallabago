@@ -75,6 +75,15 @@ component Wallabago {
         to EPUB etc.
     ]
 
+    rectangle BootstrapManager #$Manager [
+        Bootstrap Manager
+        ----
+        Application bootstrap
+        ....
+        Check if bootstrap is needed
+        and runs the necessary steps
+    ]
+
     ' Engine
 
     rectangle AuthZEngine #$Engine [
@@ -97,6 +106,16 @@ component Wallabago {
         between formats
     ]
 
+    rectangle BootstrapEngine #$Engine [
+        Bootstrap Engine
+        ----
+        Implementation
+        of bootstrap steps
+        ....
+        Initial admin accounts,
+        clients, identities
+    ]
+
     ' Storage
 
 
@@ -112,6 +131,13 @@ component Wallabago {
         ----
         Store entries 
         and files
+    ]
+
+    rectangle BootstrapStorage #$Storage [
+        Bootstrap Storage
+        ----
+        Store the state
+        of boostrap
     ]
 
     ' Data
@@ -130,6 +156,12 @@ component Wallabago {
             SQL-based storage
             for entry data
         ]
+
+        collections Boostrap [
+            Bootstrap
+            ----
+            Boostrap state
+        ]
     }
     component IdentityProvider {
         rectangle IdentityManager #$Manager [
@@ -142,8 +174,20 @@ component Wallabago {
             [UserId, Email]
         ]
 
+        rectangle IdentityEngine #$Engine [
+            Identity Engine
+            ----
+            Handles complex
+            identity operations
+            ....
+            Token pair creation,
+            Revocation of all principal
+            tokens, refresh token logic
+            etc.
+        ]
+
         rectangle IdentityStorage #$Storage [
-            Identity Storage
+            Identity SQL Storage
             ----
             Store identity-related info
         ]
@@ -166,7 +210,7 @@ component Wallabago {
             ]
 
             collections Clients [
-                Cleints
+                Clients
                 ----
                 Storage for client 
                 credentials
@@ -185,38 +229,47 @@ WallabagAndroid --> HTTPAPI
 ' API
 WebUI -> HTTPAPI
 
-HTTPAPI --> AuthNMiddleware
+HTTPAPI ..> AuthNMiddleware
 HTTPAPI ---> IdentityManager
 HTTPAPI ---> AdminManager
 HTTPAPI ---> ConversionManager
 HTTPAPI ---> EntryManager
+HTTPAPI ---> BootstrapManager
 
 ' Middleware
 AuthNMiddleware --> IdentityManager
 
 ' Managers
+BootstrapManager ---> BootstrapStorage
+BootstrapManager --> BootstrapEngine
+
 EntryManager --> RetrievalEngine
-EntryManager --> AuthZEngine
+EntryManager ..> AuthZEngine
 EntryManager ---> EntryStorage
 
-AdminManager --> AuthZEngine
+AdminManager ..> AuthZEngine
 AdminManager ---> UserStorage
 
 ConversionManager --> ConversionEngine
-ConversionManager --> AuthZEngine
+ConversionManager ..> AuthZEngine
 ConversionManager ---> EntryStorage
 
 ' Engines
 AuthZEngine --> UserStorage
+BootstrapEngine --> BootstrapStorage
+BootstrapEngine --> IdentityStorage
+BootstrapEngine --> UserStorage
 
 ' Storage
 EntryStorage --> Entries
-
+BootstrapStorage --> Boostrap
 UserStorage --> Users
 
 
 ' IdentityManager
+IdentityManager --> IdentityEngine
 IdentityManager ---> IdentityStorage
+IdentityEngine --> IdentityStorage
 IdentityStorage --> UserInfo
 IdentityStorage --> Clients
 IdentityStorage --> Tokens

@@ -2,7 +2,6 @@ package managers
 
 import (
 	"context"
-	"log/slog"
 	"time"
 
 	"github.com/andriihomiak/wallabago/internal/identity"
@@ -26,23 +25,13 @@ type IdentityManager struct {
 	tokenExpiration time.Duration
 }
 
-func rollbackOnError(ctx context.Context, err error, rollbackFn func() error) {
-	if err != nil {
-		slog.WarnContext(ctx, "Rolling back transaction", "cause", err.Error())
-		rollbackErr := rollbackFn()
-		if rollbackErr != nil {
-			slog.ErrorContext(ctx, "Error during rollback", "cause", rollbackErr.Error())
-		}
-	}
-}
-
 func (m *IdentityManager) PasswordFlow(ctx context.Context, req identity.PasswordFlowRequest) (*identity.AccessTokenResponse, error) {
 	tx, err := m.storage.Begin(ctx)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 	defer func() {
-		rollbackOnError(ctx, err, tx.Rollback)
+		identityStorage.RollbackOnError(ctx, err, tx.Rollback)
 	}()
 
 	// check client credentials
@@ -133,7 +122,7 @@ func (m *IdentityManager) RefreshTokenFlow(ctx context.Context, req identity.Ref
 		return nil, errors.WithStack(err)
 	}
 	defer func() {
-		rollbackOnError(ctx, err, tx.Rollback)
+		identityStorage.RollbackOnError(ctx, err, tx.Rollback)
 	}()
 
 	// check client credentials

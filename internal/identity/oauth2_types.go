@@ -88,7 +88,7 @@ func NewRefreshToken(userID, clientID string, key []byte) (*RefreshToken, error)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	return &RefreshToken{Token: *token, ID: tokenID}, nil
+	return &RefreshToken{Token: *token, ID: tokenID, ClientID: clientID, Revoked: false}, nil
 }
 
 type RefreshToken struct {
@@ -99,15 +99,15 @@ type RefreshToken struct {
 }
 
 type AccessToken struct {
-	Token            JWT
-	ExpiresInSeconds int64
-	Scope            Scope
-	TokenType        TokenType
-	Revoked          bool
-	ID               string
-	ClientID         string
-	UserID           string
-	IssuedAt         time.Time
+	Token            JWT       `json:"access_token"`
+	ExpiresInSeconds int64     `json:"expires_in"`
+	Scope            Scope     `json:"scope"`
+	TokenType        TokenType `json:"token_type"`
+	Revoked          bool      `json:"-"`
+	ID               string    `json:"-"`
+	ClientID         string    `json:"-"`
+	UserID           string    `json:"-"`
+	IssuedAt         time.Time `json:"-"`
 }
 
 func NewAccessToken(userID, clientID string, scope Scope, expiration time.Duration, key []byte) (*AccessToken, error) {
@@ -140,7 +140,7 @@ func NewAccessToken(userID, clientID string, scope Scope, expiration time.Durati
 
 type AccessTokenResponse struct {
 	AccessToken
-	RefreshToken JWT
+	RefreshToken JWT `json:"refresh_token,omitempty"`
 }
 
 type GrantType string
@@ -162,9 +162,9 @@ const (
 )
 
 type AuthError struct {
-	ErrorName        AuthErrorName
-	ErrorDescription string
-	ErrorURI         string
+	ErrorName        AuthErrorName `json:"error_name,omitempty"`
+	ErrorDescription string        `json:"error_description,omitempty"`
+	ErrorURI         string        `json:"error_uri,omitempty"`
 }
 
 func (e *AuthError) Error() string {

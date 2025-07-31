@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
@@ -13,16 +14,23 @@ import (
 
 	stderrors "errors"
 
+	"github.com/andriihomiak/wallabago/internal/storage"
+
+	bootstrapManagers "github.com/andriihomiak/wallabago/internal/bootstrap/managers"
 	"github.com/andriihomiak/wallabago/internal/database"
 	"github.com/andriihomiak/wallabago/internal/http/handlers"
 	"github.com/andriihomiak/wallabago/internal/http/middleware"
 	identityHandlers "github.com/andriihomiak/wallabago/internal/identity/handlers"
+	identityStorage "github.com/andriihomiak/wallabago/internal/identity/storage"
 	"github.com/andriihomiak/wallabago/internal/instrumentation"
 	"github.com/pkg/errors"
 )
 
 type App struct {
 	instrumentationEnabled bool
+	addr                   string
+	identityPool           *sql.DB
+	appPool                *sql.DB
 }
 
 func getDefaultMiddleware() middleware.Middleware {
@@ -31,10 +39,10 @@ func getDefaultMiddleware() middleware.Middleware {
 	)
 }
 
-func newRootHandler(_, identityDBPool *sql.DB) http.Handler {
+func (a *App) newRootHandler() http.Handler {
 	mux := http.NewServeMux()
 
-	oauth2 := identityHandlers.NewOAuth2HandlerFromDBPool(identityDBPool)
+	oauth2 := identityHandlers.NewOAuth2HandlerFromDBPool(a.identityPool)
 	mux.HandleFunc("POST /oauth/v2/token", oauth2.TokenEndpoint)
 
 	service := handlers.Index{}
@@ -44,7 +52,7 @@ func newRootHandler(_, identityDBPool *sql.DB) http.Handler {
 	return globalMiddleware.Wrap(mux)
 }
 
-func (wb *App) Start() error {
+func (a *App) Start() error {
 	// listen for interrupt signal
 	rootCtx, stopListeningForInterrupt := signal.NotifyContext(
 		context.Background(),
@@ -57,7 +65,7 @@ func (wb *App) Start() error {
 	var shutdownOtel func(context.Context) error
 	var err error
 
-	if wb.instrumentationEnabled {
+	if a.instrumentationEnabled {
 		shutdownOtel, err = instrumentation.SetupOtelSDK(rootCtx)
 		if err != nil {
 			return errors.Wrap(err, "Failed to setup otel")
@@ -84,16 +92,30 @@ func (wb *App) Start() error {
 	}
 
 	// todo: use separate db pools?
-	rootHandler := newRootHandler(dbPool, dbPool)
+	a.identityPool = dbPool
+	a.appPool = dbPool
+
+	rootHandler := a.newRootHandler()
 	server := &http.Server{
-		// TODO: pass from outside?
-		Addr:    ":8080",
+		Addr:    a.addr,
 		Handler: rootHandler,
 		// the context here is the one cancellable by interrupt
 		BaseContext: func(_ net.Listener) context.Context { return rootCtx },
 		// preventing slowloris attack as advised by gosec - increase if needed
 		// can also be handled in an upstream server
 		ReadHeaderTimeout: time.Millisecond * 1000,
+	}
+
+	// perform bootstrap
+	bootstrapManager := bootstrapManagers.NewManager(
+		identityStorage.NewCodegenStorage(a.identityPool),
+		storage.NewGeneratedBootstrapSQLStorage(a.appPool),
+	)
+
+	err = bootstrapManager.Bootstrap(rootCtx)
+	if err != nil {
+		slog.ErrorContext(rootCtx, "Failed to bootstrap", "cause", err.Error())
+		return errors.WithStack(err)
 	}
 
 	// start the server and wait for server error
@@ -137,7 +159,15 @@ func (wb *App) Start() error {
 }
 
 func NewApp() (*App, error) {
+	_, enableOtel := os.LookupEnv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
+	addr := ":8080"
+	port, ok := os.LookupEnv("WALLABAGO_PORT")
+	if ok {
+		// todo: verify port is int
+		addr = fmt.Sprintf(":%s", port)
+	}
 	return &App{
-		instrumentationEnabled: true,
+		instrumentationEnabled: enableOtel,
+		addr:                   addr,
 	}, nil
 }

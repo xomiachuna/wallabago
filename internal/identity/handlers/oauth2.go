@@ -37,6 +37,16 @@ func NewOAuth2HandlerFromDBPool(
 	)
 }
 
+func NewOAuth2HandlerFromStorage(
+	sqlStorage storage.SQLStorage,
+) *OAuth2Handler {
+	return NewOAuth2Handler(
+		managers.NewIdentityManager(
+			sqlStorage,
+		),
+	)
+}
+
 const (
 	OAuth2GrantType    = "grant_type"
 	OAuth2ClientID     = "client_id"

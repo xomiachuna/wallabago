@@ -7,16 +7,55 @@ package database
 
 import (
 	"context"
-	"time"
 )
 
-const currentTimestamp = `-- name: CurrentTimestamp :one
-SELECT CURRENT_TIMESTAMP::timestamp
+const getBoostrapConditions = `-- name: GetBoostrapConditions :many
+SELECT
+	condition_name,
+	satisfied
+FROM
+	wallabago.bootstrap
 `
 
-func (q *Queries) CurrentTimestamp(ctx context.Context) (time.Time, error) {
-	row := q.queryRow(ctx, q.currentTimestampStmt, currentTimestamp)
-	var column_1 time.Time
-	err := row.Scan(&column_1)
-	return column_1, err
+func (q *Queries) GetBoostrapConditions(ctx context.Context) ([]*WallabagoBootstrap, error) {
+	rows, err := q.query(ctx, q.getBoostrapConditionsStmt, getBoostrapConditions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*WallabagoBootstrap
+	for rows.Next() {
+		var i WallabagoBootstrap
+		if err := rows.Scan(&i.ConditionName, &i.Satisfied); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markBootstrapConditionSatisfied = `-- name: MarkBootstrapConditionSatisfied :one
+INSERT INTO
+	wallabago.bootstrap (condition_name, satisfied)
+VALUES
+	($1, TRUE)
+ON CONFLICT ON CONSTRAINT bootstrap_pkey DO UPDATE
+SET
+	satisfied = TRUE
+RETURNING
+	condition_name,
+	satisfied
+`
+
+func (q *Queries) MarkBootstrapConditionSatisfied(ctx context.Context, conditionName string) (*WallabagoBootstrap, error) {
+	row := q.queryRow(ctx, q.markBootstrapConditionSatisfiedStmt, markBootstrapConditionSatisfied, conditionName)
+	var i WallabagoBootstrap
+	err := row.Scan(&i.ConditionName, &i.Satisfied)
+	return &i, err
 }
