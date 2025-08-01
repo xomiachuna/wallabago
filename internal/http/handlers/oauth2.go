@@ -1,15 +1,13 @@
 package handlers
 
 import (
-	"database/sql"
 	"fmt"
 	"net/http"
 
+	"github.com/andriihomiak/wallabago/internal/core"
 	"github.com/andriihomiak/wallabago/internal/http/constants"
 	"github.com/andriihomiak/wallabago/internal/http/response"
-	"github.com/andriihomiak/wallabago/internal/identity"
-	"github.com/andriihomiak/wallabago/internal/identity/managers"
-	"github.com/andriihomiak/wallabago/internal/identity/storage"
+	"github.com/andriihomiak/wallabago/internal/managers"
 	"github.com/pkg/errors"
 )
 
@@ -23,28 +21,6 @@ func NewOAuth2Handler(
 	return &OAuth2Handler{
 		manager: manager,
 	}
-}
-
-func NewOAuth2HandlerFromDBPool(
-	pool *sql.DB,
-) *OAuth2Handler {
-	return NewOAuth2Handler(
-		managers.NewIdentityManager(
-			storage.NewCodegenStorage(
-				pool,
-			),
-		),
-	)
-}
-
-func NewOAuth2HandlerFromStorage(
-	sqlStorage storage.SQLStorage,
-) *OAuth2Handler {
-	return NewOAuth2Handler(
-		managers.NewIdentityManager(
-			sqlStorage,
-		),
-	)
 }
 
 const (
@@ -69,7 +45,7 @@ func requiredPostFormField(r *http.Request, key string) (string, error) {
 	return r.PostForm.Get(key), nil
 }
 
-func requiredPasswordFlowRequest(r *http.Request) (*identity.PasswordFlowRequest, error) {
+func requiredPasswordFlowRequest(r *http.Request) (*core.PasswordFlowRequest, error) {
 	clientID, requiredErr := requiredPostFormField(r, OAuth2ClientID)
 	if requiredErr != nil {
 		return nil, requiredErr
@@ -87,7 +63,7 @@ func requiredPasswordFlowRequest(r *http.Request) (*identity.PasswordFlowRequest
 	if requiredErr != nil {
 		return nil, requiredErr
 	}
-	return &identity.PasswordFlowRequest{
+	return &core.PasswordFlowRequest{
 		ClientID:     clientID,
 		Username:     username,
 		ClientSecret: clientSecret,
@@ -104,7 +80,7 @@ func (h *OAuth2Handler) handlePasswordFlow(w http.ResponseWriter, r *http.Reques
 
 	token, err := h.manager.PasswordFlow(r.Context(), *req)
 	if err != nil {
-		authError := &identity.AuthError{}
+		authError := &core.AuthError{}
 		if errors.As(err, &authError) {
 			response.RespondJSON(w, r, authError, http.StatusUnauthorized)
 			return
@@ -130,7 +106,7 @@ func (h *OAuth2Handler) TokenEndpoint(w http.ResponseWriter, r *http.Request) {
 	case "":
 		response.RespondErrorPlain(w, r, fmt.Errorf("required field: %s", OAuth2GrantType), http.StatusBadRequest)
 		return
-	case identity.GrantTypePassword:
+	case core.GrantTypePassword:
 		h.handlePasswordFlow(w, r)
 		return
 	default:

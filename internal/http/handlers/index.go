@@ -21,9 +21,9 @@ const indexPage = `<!DOCTYPE html>
     </body>
 </html>`
 
-type Index struct{}
+type WebUI struct{}
 
-func (s *Index) Index(w http.ResponseWriter, _ *http.Request) {
+func (s *WebUI) Index(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set(constants.HeaderContentType, constants.MimeTextHTML)
 	fmt.Fprintf(w, indexPage, time.Now().UTC().Format(time.Layout))

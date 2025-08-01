@@ -24,25 +24,137 @@ func New(db DBTX) *Queries {
 func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	q := Queries{db: db}
 	var err error
+	if q.addAccessTokenStmt, err = db.PrepareContext(ctx, addAccessToken); err != nil {
+		return nil, fmt.Errorf("error preparing query AddAccessToken: %w", err)
+	}
+	if q.addClientStmt, err = db.PrepareContext(ctx, addClient); err != nil {
+		return nil, fmt.Errorf("error preparing query AddClient: %w", err)
+	}
+	if q.addRefreshTokenStmt, err = db.PrepareContext(ctx, addRefreshToken); err != nil {
+		return nil, fmt.Errorf("error preparing query AddRefreshToken: %w", err)
+	}
+	if q.addUserStmt, err = db.PrepareContext(ctx, addUser); err != nil {
+		return nil, fmt.Errorf("error preparing query AddUser: %w", err)
+	}
+	if q.deleteAccessTokenByIDStmt, err = db.PrepareContext(ctx, deleteAccessTokenByID); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteAccessTokenByID: %w", err)
+	}
+	if q.deleteClientByIDStmt, err = db.PrepareContext(ctx, deleteClientByID); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteClientByID: %w", err)
+	}
+	if q.deleteRefreshTokenByIDStmt, err = db.PrepareContext(ctx, deleteRefreshTokenByID); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteRefreshTokenByID: %w", err)
+	}
+	if q.deleteUserByIDStmt, err = db.PrepareContext(ctx, deleteUserByID); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteUserByID: %w", err)
+	}
+	if q.getAccessTokenByJWTStmt, err = db.PrepareContext(ctx, getAccessTokenByJWT); err != nil {
+		return nil, fmt.Errorf("error preparing query GetAccessTokenByJWT: %w", err)
+	}
 	if q.getBoostrapConditionsStmt, err = db.PrepareContext(ctx, getBoostrapConditions); err != nil {
 		return nil, fmt.Errorf("error preparing query GetBoostrapConditions: %w", err)
 	}
+	if q.getClientByIDStmt, err = db.PrepareContext(ctx, getClientByID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetClientByID: %w", err)
+	}
+	if q.getRefreshTokenByJWTStmt, err = db.PrepareContext(ctx, getRefreshTokenByJWT); err != nil {
+		return nil, fmt.Errorf("error preparing query GetRefreshTokenByJWT: %w", err)
+	}
+	if q.getUserByUsernameStmt, err = db.PrepareContext(ctx, getUserByUsername); err != nil {
+		return nil, fmt.Errorf("error preparing query GetUserByUsername: %w", err)
+	}
 	if q.markBootstrapConditionSatisfiedStmt, err = db.PrepareContext(ctx, markBootstrapConditionSatisfied); err != nil {
 		return nil, fmt.Errorf("error preparing query MarkBootstrapConditionSatisfied: %w", err)
+	}
+	if q.revokeAccessTokenByIDStmt, err = db.PrepareContext(ctx, revokeAccessTokenByID); err != nil {
+		return nil, fmt.Errorf("error preparing query RevokeAccessTokenByID: %w", err)
+	}
+	if q.revokeRefreshTokenByIDStmt, err = db.PrepareContext(ctx, revokeRefreshTokenByID); err != nil {
+		return nil, fmt.Errorf("error preparing query RevokeRefreshTokenByID: %w", err)
 	}
 	return &q, nil
 }
 
 func (q *Queries) Close() error {
 	var err error
+	if q.addAccessTokenStmt != nil {
+		if cerr := q.addAccessTokenStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addAccessTokenStmt: %w", cerr)
+		}
+	}
+	if q.addClientStmt != nil {
+		if cerr := q.addClientStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addClientStmt: %w", cerr)
+		}
+	}
+	if q.addRefreshTokenStmt != nil {
+		if cerr := q.addRefreshTokenStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addRefreshTokenStmt: %w", cerr)
+		}
+	}
+	if q.addUserStmt != nil {
+		if cerr := q.addUserStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addUserStmt: %w", cerr)
+		}
+	}
+	if q.deleteAccessTokenByIDStmt != nil {
+		if cerr := q.deleteAccessTokenByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteAccessTokenByIDStmt: %w", cerr)
+		}
+	}
+	if q.deleteClientByIDStmt != nil {
+		if cerr := q.deleteClientByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteClientByIDStmt: %w", cerr)
+		}
+	}
+	if q.deleteRefreshTokenByIDStmt != nil {
+		if cerr := q.deleteRefreshTokenByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteRefreshTokenByIDStmt: %w", cerr)
+		}
+	}
+	if q.deleteUserByIDStmt != nil {
+		if cerr := q.deleteUserByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteUserByIDStmt: %w", cerr)
+		}
+	}
+	if q.getAccessTokenByJWTStmt != nil {
+		if cerr := q.getAccessTokenByJWTStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getAccessTokenByJWTStmt: %w", cerr)
+		}
+	}
 	if q.getBoostrapConditionsStmt != nil {
 		if cerr := q.getBoostrapConditionsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getBoostrapConditionsStmt: %w", cerr)
 		}
 	}
+	if q.getClientByIDStmt != nil {
+		if cerr := q.getClientByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getClientByIDStmt: %w", cerr)
+		}
+	}
+	if q.getRefreshTokenByJWTStmt != nil {
+		if cerr := q.getRefreshTokenByJWTStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getRefreshTokenByJWTStmt: %w", cerr)
+		}
+	}
+	if q.getUserByUsernameStmt != nil {
+		if cerr := q.getUserByUsernameStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getUserByUsernameStmt: %w", cerr)
+		}
+	}
 	if q.markBootstrapConditionSatisfiedStmt != nil {
 		if cerr := q.markBootstrapConditionSatisfiedStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing markBootstrapConditionSatisfiedStmt: %w", cerr)
+		}
+	}
+	if q.revokeAccessTokenByIDStmt != nil {
+		if cerr := q.revokeAccessTokenByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing revokeAccessTokenByIDStmt: %w", cerr)
+		}
+	}
+	if q.revokeRefreshTokenByIDStmt != nil {
+		if cerr := q.revokeRefreshTokenByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing revokeRefreshTokenByIDStmt: %w", cerr)
 		}
 	}
 	return err
@@ -84,15 +196,43 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 type Queries struct {
 	db                                  DBTX
 	tx                                  *sql.Tx
+	addAccessTokenStmt                  *sql.Stmt
+	addClientStmt                       *sql.Stmt
+	addRefreshTokenStmt                 *sql.Stmt
+	addUserStmt                         *sql.Stmt
+	deleteAccessTokenByIDStmt           *sql.Stmt
+	deleteClientByIDStmt                *sql.Stmt
+	deleteRefreshTokenByIDStmt          *sql.Stmt
+	deleteUserByIDStmt                  *sql.Stmt
+	getAccessTokenByJWTStmt             *sql.Stmt
 	getBoostrapConditionsStmt           *sql.Stmt
+	getClientByIDStmt                   *sql.Stmt
+	getRefreshTokenByJWTStmt            *sql.Stmt
+	getUserByUsernameStmt               *sql.Stmt
 	markBootstrapConditionSatisfiedStmt *sql.Stmt
+	revokeAccessTokenByIDStmt           *sql.Stmt
+	revokeRefreshTokenByIDStmt          *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
 		db:                                  tx,
 		tx:                                  tx,
+		addAccessTokenStmt:                  q.addAccessTokenStmt,
+		addClientStmt:                       q.addClientStmt,
+		addRefreshTokenStmt:                 q.addRefreshTokenStmt,
+		addUserStmt:                         q.addUserStmt,
+		deleteAccessTokenByIDStmt:           q.deleteAccessTokenByIDStmt,
+		deleteClientByIDStmt:                q.deleteClientByIDStmt,
+		deleteRefreshTokenByIDStmt:          q.deleteRefreshTokenByIDStmt,
+		deleteUserByIDStmt:                  q.deleteUserByIDStmt,
+		getAccessTokenByJWTStmt:             q.getAccessTokenByJWTStmt,
 		getBoostrapConditionsStmt:           q.getBoostrapConditionsStmt,
+		getClientByIDStmt:                   q.getClientByIDStmt,
+		getRefreshTokenByJWTStmt:            q.getRefreshTokenByJWTStmt,
+		getUserByUsernameStmt:               q.getUserByUsernameStmt,
 		markBootstrapConditionSatisfiedStmt: q.markBootstrapConditionSatisfiedStmt,
+		revokeAccessTokenByIDStmt:           q.revokeAccessTokenByIDStmt,
+		revokeRefreshTokenByIDStmt:          q.revokeRefreshTokenByIDStmt,
 	}
 }

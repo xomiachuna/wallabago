@@ -10,24 +10,6 @@ x-commons:
       DB: "postgresql://wallabago-api:wallabago@postgres:5432/wallabago-db?sslmode=disable&application_name=wallabago-api-client"
 
 services:
-  identity-migrations:
-    networks:
-      - wallabago-signoz
-      - wallabago
-    image: migrate/migrate:v4.18.3
-    depends_on:
-      postgres:
-        condition: service_healthy
-    volumes:
-      - ../../internal/identity/database/migrations/:/migrations
-    environment:
-      <<:
-        - *otel-traces-env
-        - *otel-metrics-env
-        - *otel-logs-env 
-        - *db-env
-    entrypoint: ["/bin/sh", "-c", "migrate -path=/migrations/ -database \"$$DB&x-migrations-table=identity_migrations\" up"]
-
   migrations:
     networks:
       - wallabago-signoz
@@ -54,8 +36,6 @@ services:
       postgres:
         condition: service_healthy
       migrations:
-        condition: service_completed_successfully
-      identity-migrations:
         condition: service_completed_successfully
 
     build: ../../

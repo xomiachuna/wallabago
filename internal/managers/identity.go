@@ -4,48 +4,48 @@ import (
 	"context"
 	"time"
 
-	"github.com/andriihomiak/wallabago/internal/identity"
-	identityStorage "github.com/andriihomiak/wallabago/internal/identity/storage"
+	"github.com/andriihomiak/wallabago/internal/core"
+	"github.com/andriihomiak/wallabago/internal/storage"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 )
 
 func NewIdentityManager(
-	storage identityStorage.SQLStorage,
+	identityStorage storage.IdentitySQLStorage,
 ) *IdentityManager {
 	return &IdentityManager{
-		storage:         storage,
+		storage:         identityStorage,
 		tokenExpiration: time.Hour * 24,
 	}
 }
 
 type IdentityManager struct {
-	storage         identityStorage.SQLStorage
+	storage         storage.IdentitySQLStorage
 	key             []byte
 	tokenExpiration time.Duration
 }
 
-func (m *IdentityManager) PasswordFlow(ctx context.Context, req identity.PasswordFlowRequest) (*identity.AccessTokenResponse, error) {
+func (m *IdentityManager) PasswordFlow(ctx context.Context, req core.PasswordFlowRequest) (*core.AccessTokenResponse, error) {
 	tx, err := m.storage.Begin(ctx)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 	defer func() {
-		identityStorage.RollbackOnError(ctx, err, tx.Rollback)
+		storage.RollbackOnError(ctx, err, tx.Rollback)
 	}()
 
 	// check client credentials
 	client, err := m.storage.GetClientByID(ctx, tx, req.ClientID)
 	if err != nil {
 		// todo: check error type
-		return nil, &identity.AuthError{
-			ErrorName:        identity.AuthErrorInvalidClient,
+		return nil, &core.AuthError{
+			ErrorName:        core.AuthErrorInvalidClient,
 			ErrorDescription: errors.WithStack(err).Error(),
 		}
 	}
 	if client.Secret != req.ClientSecret {
-		return nil, &identity.AuthError{
-			ErrorName:        identity.AuthErrorInvalidClient,
+		return nil, &core.AuthError{
+			ErrorName:        core.AuthErrorInvalidClient,
 			ErrorDescription: errors.WithStack(err).Error(),
 		}
 	}
@@ -54,8 +54,8 @@ func (m *IdentityManager) PasswordFlow(ctx context.Context, req identity.Passwor
 	user, err := m.storage.GetUserInfoByUsername(ctx, tx, req.Username)
 	if err != nil {
 		// todo: check error type
-		return nil, &identity.AuthError{
-			ErrorName:        identity.AuthErrorInvalidGrant,
+		return nil, &core.AuthError{
+			ErrorName:        core.AuthErrorInvalidGrant,
 			ErrorDescription: errors.WithStack(err).Error(),
 		}
 	}
@@ -63,20 +63,20 @@ func (m *IdentityManager) PasswordFlow(ctx context.Context, req identity.Passwor
 	passwordErr := bcrypt.CompareHashAndPassword(user.PasswordHash, []byte(req.Password))
 	if passwordErr != nil {
 		// todo: check error type
-		return nil, &identity.AuthError{
-			ErrorName:        identity.AuthErrorInvalidGrant,
+		return nil, &core.AuthError{
+			ErrorName:        core.AuthErrorInvalidGrant,
 			ErrorDescription: errors.WithStack(err).Error(),
 		}
 	}
 
-	var scope *identity.Scope
+	var scope *core.Scope
 	if req.Scope == "" {
-		scope = identity.DefaultScope()
+		scope = core.DefaultScope()
 	} else {
-		scope, err = identity.NewScopeFromString(req.Scope)
+		scope, err = core.NewScopeFromString(req.Scope)
 		if err != nil {
-			return nil, &identity.AuthError{
-				ErrorName:        identity.AuthErrorInvalidScope,
+			return nil, &core.AuthError{
+				ErrorName:        core.AuthErrorInvalidScope,
 				ErrorDescription: errors.WithStack(err).Error(),
 			}
 		}
@@ -85,7 +85,7 @@ func (m *IdentityManager) PasswordFlow(ctx context.Context, req identity.Passwor
 	// credentials correct at this point, issue a new token pair
 
 	// create and save refresh token
-	refreshToken, err := identity.NewRefreshToken(user.ID, client.ID, m.key)
+	refreshToken, err := core.NewRefreshToken(user.ID, client.ID, m.key)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -96,7 +96,7 @@ func (m *IdentityManager) PasswordFlow(ctx context.Context, req identity.Passwor
 	}
 
 	// create and save access token
-	accessStoken, err := identity.NewAccessToken(user.ID, client.ID, *scope, m.tokenExpiration, m.key)
+	accessStoken, err := core.NewAccessToken(user.ID, client.ID, *scope, m.tokenExpiration, m.key)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -110,33 +110,33 @@ func (m *IdentityManager) PasswordFlow(ctx context.Context, req identity.Passwor
 		return nil, errors.WithStack(err)
 	}
 
-	return &identity.AccessTokenResponse{
+	return &core.AccessTokenResponse{
 		AccessToken:  *accessStoken,
 		RefreshToken: refreshToken.Token,
 	}, nil
 }
 
-func (m *IdentityManager) RefreshTokenFlow(ctx context.Context, req identity.RefreshTokenFlowRequest) (*identity.AccessTokenResponse, error) {
+func (m *IdentityManager) RefreshTokenFlow(ctx context.Context, req core.RefreshTokenFlowRequest) (*core.AccessTokenResponse, error) {
 	tx, err := m.storage.Begin(ctx)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 	defer func() {
-		identityStorage.RollbackOnError(ctx, err, tx.Rollback)
+		storage.RollbackOnError(ctx, err, tx.Rollback)
 	}()
 
 	// check client credentials
 	client, err := m.storage.GetClientByID(ctx, tx, req.ClientID)
 	if err != nil {
 		// todo: check error type
-		return nil, &identity.AuthError{
-			ErrorName:        identity.AuthErrorInvalidClient,
+		return nil, &core.AuthError{
+			ErrorName:        core.AuthErrorInvalidClient,
 			ErrorDescription: errors.WithStack(err).Error(),
 		}
 	}
 	if client.Secret != req.ClientSecret {
-		return nil, &identity.AuthError{
-			ErrorName:        identity.AuthErrorInvalidClient,
+		return nil, &core.AuthError{
+			ErrorName:        core.AuthErrorInvalidClient,
 			ErrorDescription: errors.WithStack(err).Error(),
 		}
 	}

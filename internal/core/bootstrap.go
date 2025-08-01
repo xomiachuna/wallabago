@@ -1,4 +1,4 @@
-package bootstrap
+package core
 
 type ConditionName string
 

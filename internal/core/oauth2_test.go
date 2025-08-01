@@ -1,37 +1,37 @@
-package identity_test
+package core_test
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/andriihomiak/wallabago/internal/identity"
+	"github.com/andriihomiak/wallabago/internal/core"
 )
 
 func TestNewScope(t *testing.T) {
 	cases := []struct {
-		scopeNames    []identity.ScopeName
+		scopeNames    []core.ScopeName
 		shouldSucceed bool
 		expectedValue string
 	}{
 		{
-			scopeNames:    []identity.ScopeName{identity.ScopeName("entries")},
+			scopeNames:    []core.ScopeName{core.ScopeName("entries")},
 			shouldSucceed: true,
 			expectedValue: "entries",
 		},
 		{
-			scopeNames:    []identity.ScopeName{},
+			scopeNames:    []core.ScopeName{},
 			shouldSucceed: true,
 			expectedValue: "",
 		},
 		{
-			scopeNames:    []identity.ScopeName{identity.ScopeName("bad")},
+			scopeNames:    []core.ScopeName{core.ScopeName("bad")},
 			shouldSucceed: false,
 			expectedValue: "",
 		},
 	}
 	for i, testCase := range cases {
 		t.Run(fmt.Sprintf("TestNewScope_%d_%#v", i, testCase.scopeNames), func(t *testing.T) {
-			result, err := identity.NewScope(testCase.scopeNames...)
+			result, err := core.NewScope(testCase.scopeNames...)
 			if err != nil {
 				if testCase.shouldSucceed {
 					t.Fatalf("Should succeed without error")
@@ -43,7 +43,7 @@ func TestNewScope(t *testing.T) {
 				if result == nil {
 					t.Fatalf("Scope should not be nil in case of no error")
 				}
-				if *result != identity.Scope(testCase.expectedValue) {
+				if *result != core.Scope(testCase.expectedValue) {
 					t.Fatalf("Expected %#v but got %#v", testCase.expectedValue, *result)
 				}
 			}

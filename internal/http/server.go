@@ -2,8 +2,6 @@ package http
 
 import (
 	"context"
-	"database/sql"
-	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
@@ -14,45 +12,25 @@ import (
 
 	stderrors "errors"
 
-	"github.com/andriihomiak/wallabago/internal/storage"
-
-	bootstrapManagers "github.com/andriihomiak/wallabago/internal/bootstrap/managers"
-	"github.com/andriihomiak/wallabago/internal/database"
-	"github.com/andriihomiak/wallabago/internal/http/handlers"
-	"github.com/andriihomiak/wallabago/internal/http/middleware"
-	identityHandlers "github.com/andriihomiak/wallabago/internal/identity/handlers"
-	identityStorage "github.com/andriihomiak/wallabago/internal/identity/storage"
-	"github.com/andriihomiak/wallabago/internal/instrumentation"
+	"github.com/andriihomiak/wallabago/internal/app"
 	"github.com/pkg/errors"
 )
 
-type App struct {
-	instrumentationEnabled bool
-	addr                   string
-	identityPool           *sql.DB
-	appPool                *sql.DB
+type Server struct {
+	app app.Wallabago
 }
 
-func getDefaultMiddleware() middleware.Middleware {
-	return middleware.NewChain(
-		middleware.NewOtelHTTPMiddleware(),
-	)
+func NewServer(cfg app.Config) (*Server, error) {
+	wallabago, err := app.NewWallabago(context.Background(), &cfg)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return &Server{
+		app: *wallabago,
+	}, nil
 }
 
-func (a *App) newRootHandler() http.Handler {
-	mux := http.NewServeMux()
-
-	oauth2 := identityHandlers.NewOAuth2HandlerFromDBPool(a.identityPool)
-	mux.HandleFunc("POST /oauth/v2/token", oauth2.TokenEndpoint)
-
-	service := handlers.Index{}
-	mux.HandleFunc("/", service.Index)
-
-	globalMiddleware := getDefaultMiddleware()
-	return globalMiddleware.Wrap(mux)
-}
-
-func (a *App) Start() error {
+func (s *Server) Start() error {
 	// listen for interrupt signal
 	rootCtx, stopListeningForInterrupt := signal.NotifyContext(
 		context.Background(),
@@ -62,42 +40,12 @@ func (a *App) Start() error {
 	)
 	defer stopListeningForInterrupt()
 
-	var shutdownOtel func(context.Context) error
-	var err error
+	rootHandler := http.NewServeMux()
 
-	if a.instrumentationEnabled {
-		shutdownOtel, err = instrumentation.SetupOtelSDK(rootCtx)
-		if err != nil {
-			return errors.Wrap(err, "Failed to setup otel")
-		}
-	} else {
-		slog.Warn("Otel instrumentation is not enabled")
-		shutdownOtel = func(_ context.Context) error {
-			slog.Warn("Otel instrumentation is not enabled, nothing to cleanup")
-			return nil
-		}
-	}
+	s.app.RegisterHandlers(rootHandler)
 
-	// todo: pass db url as a parameter
-	dbPool, err := database.NewDBPool(rootCtx, os.Getenv("DB"))
-	if err != nil {
-		return errors.Wrap(err, "Failed to connect to db")
-	}
-
-	shutdownDb := func() error {
-		slog.Warn("Closing db pool")
-		closeErr := dbPool.Close()
-		slog.Warn("FB pool closed")
-		return closeErr
-	}
-
-	// todo: use separate db pools?
-	a.identityPool = dbPool
-	a.appPool = dbPool
-
-	rootHandler := a.newRootHandler()
 	server := &http.Server{
-		Addr:    a.addr,
+		Addr:    s.app.Addr(),
 		Handler: rootHandler,
 		// the context here is the one cancellable by interrupt
 		BaseContext: func(_ net.Listener) context.Context { return rootCtx },
@@ -107,14 +55,8 @@ func (a *App) Start() error {
 	}
 
 	// perform bootstrap
-	bootstrapManager := bootstrapManagers.NewManager(
-		identityStorage.NewCodegenStorage(a.identityPool),
-		storage.NewGeneratedBootstrapSQLStorage(a.appPool),
-	)
-
-	err = bootstrapManager.Bootstrap(rootCtx)
+	err := s.app.Prepare(rootCtx)
 	if err != nil {
-		slog.ErrorContext(rootCtx, "Failed to bootstrap", "cause", err.Error())
 		return errors.WithStack(err)
 	}
 
@@ -128,46 +70,25 @@ func (a *App) Start() error {
 	// we stop either due to server error or an interrupt
 	select {
 	case err := <-serveErr:
-		// shutdown due to server failure
-		slog.Warn("Server failed", "cause", err)
-		slog.Warn("Shutting down otel")
-		otelShutdownCtx := context.TODO()
-		otelShutdownErr := errors.Wrap(shutdownOtel(otelShutdownCtx), "errors during otel shutdown")
-		// shutdown db as well
-		return stderrors.Join(shutdownDb(), otelShutdownErr, err)
+		// shutdown due to server start failure
+
+		slog.Warn("Server start failed", "cause", err)
+		shutdownCtx := context.TODO()
+		appShutdownErr := s.app.Shutdown(shutdownCtx)
+		return stderrors.Join(err, appShutdownErr)
 
 	case <-rootCtx.Done():
-		// todo: add logic for readiness probes
 		// shutdown due to interrupt
+
+		// todo: add logic for graceful handling of readiness probes
 		slog.Warn("Received interrupt, shutting down server", "cause", rootCtx.Err())
 		// this allows for forceful termination using second interrupt
 		stopListeningForInterrupt()
-		// cant reuse the context here as it is honored by shutdown and
+		// cant reuse the root context here as it is honored by shutdown and
 		// communicates the timeout for graceful shutdown
-		serverShutdownCtx := context.TODO()
-		serverShutdownErr := errors.Wrap(server.Shutdown(serverShutdownCtx), "error during server shutdown")
-		slog.Warn("Server shut down finished", "errorDuringShutdown", serverShutdownErr)
-
-		slog.Warn("Shutting down otel")
-		otelShutdownCtx := context.TODO()
-		otelShutdownErr := errors.Wrap(shutdownOtel(otelShutdownCtx), "error during otel shutdown")
-		slog.Warn("Otel shut down finished", "errorDuringShutdown", otelShutdownErr)
-
-		// shutdown db as well
-		return stderrors.Join(shutdownDb(), otelShutdownErr, serverShutdownErr)
+		shutdownCtx := context.TODO()
+		serverShutdownErr := server.Shutdown(shutdownCtx)
+		appShutdownErr := s.app.Shutdown(shutdownCtx)
+		return stderrors.Join(err, appShutdownErr, serverShutdownErr)
 	}
-}
-
-func NewApp() (*App, error) {
-	_, enableOtel := os.LookupEnv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
-	addr := ":8080"
-	port, ok := os.LookupEnv("WALLABAGO_PORT")
-	if ok {
-		// todo: verify port is int
-		addr = fmt.Sprintf(":%s", port)
-	}
-	return &App{
-		instrumentationEnabled: enableOtel,
-		addr:                   addr,
-	}, nil
 }
