@@ -142,57 +142,30 @@ component Wallabago {
 
     ' Data
 
-    database AppDatabase #$Persistence {
-        collections Users [
-            Users
-            ----
-            Admin status,
-            preferences etc.
-        ]
+    database Database #$Persistence {
+        rectangle Application #$Persistence {
+            collections Users [
+                Users
+                ----
+                Admin status,
+                preferences etc.
+            ]
 
-        collections Entries [
-            Entries
-            ----
-            SQL-based storage
-            for entry data
-        ]
+            collections Entries [
+                Entries
+                ----
+                SQL-based storage
+                for entry data
+            ]
 
-        collections Boostrap [
-            Bootstrap
-            ----
-            Boostrap state
-        ]
-    }
-    component IdentityProvider {
-        rectangle IdentityManager #$Manager [
-            Identity Manager
-            ----
-            Handles Authentication
-            ....
-            Provides claims
-            about authenticated user
-            [UserId, Email]
-        ]
+            collections Boostrap [
+                Bootstrap
+                ----
+                Boostrap state
+            ]
+        }
 
-        rectangle IdentityEngine #$Engine [
-            Identity Engine
-            ----
-            Handles complex
-            identity operations
-            ....
-            Token pair creation,
-            Revocation of all principal
-            tokens, refresh token logic
-            etc.
-        ]
-
-        rectangle IdentityStorage #$Storage [
-            Identity SQL Storage
-            ----
-            Store identity-related info
-        ]
-
-        database IdentityDatabase #$Persistence {
+        rectangle Identity #$Persistence {
             collections UserInfo [
                 User Info
                 ----
@@ -216,6 +189,26 @@ component Wallabago {
                 credentials
             ]
         }
+
+    }
+
+    component IdentityProvider #line.dashed;line:darkslategray;text:darkslategray{
+        rectangle IdentityManager #$Manager [
+            Identity Manager
+            ----
+            Handles Authentication
+            ....
+            Provides claims
+            about authenticated user
+            [UserId, Email]
+        ]
+
+        rectangle IdentityStorage #$Storage [
+            Identity SQL Storage
+            ----
+            Store identity-related info
+        ]
+
     }
 }
 
@@ -227,17 +220,17 @@ User --> WebUI
 User -> WallabagAndroid
 WallabagAndroid --> HTTPAPI
 ' API
-WebUI -> HTTPAPI
+WebUI - HTTPAPI
 
 HTTPAPI ..> AuthNMiddleware
 HTTPAPI ---> IdentityManager
-HTTPAPI ---> AdminManager
-HTTPAPI ---> ConversionManager
-HTTPAPI ---> EntryManager
 HTTPAPI ---> BootstrapManager
 
 ' Middleware
 AuthNMiddleware --> IdentityManager
+AuthNMiddleware ..> EntryManager
+AuthNMiddleware ..> ConversionManager
+AuthNMiddleware ..> AdminManager
 
 ' Managers
 BootstrapManager ---> BootstrapStorage
@@ -267,9 +260,7 @@ UserStorage --> Users
 
 
 ' IdentityManager
-IdentityManager --> IdentityEngine
 IdentityManager ---> IdentityStorage
-IdentityEngine --> IdentityStorage
 IdentityStorage --> UserInfo
 IdentityStorage --> Clients
 IdentityStorage --> Tokens

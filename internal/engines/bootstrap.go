@@ -46,7 +46,7 @@ func NewBoostrapEngine(
 var _ BootstrapEngine = (*bootstrapEngine)(nil)
 
 func (e *bootstrapEngine) CreateAdminAccount(ctx context.Context, bootstrapCtx BootstrapContext) error {
-	// TODO: get admin username and password from config
+	// TODO: get admin username and password from config?
 	adminUsername := "admin"
 	adminEmail := "admin@admin"
 	adminPassword := "admin"
