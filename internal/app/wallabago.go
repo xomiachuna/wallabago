@@ -45,8 +45,9 @@ func NewWallabago(ctx context.Context, config *Config) (*Wallabago, error) {
 	// storage
 	bootstrapStorage := storage.NewBootstrapSQLStorage(dbPool)
 	identityStorage := storage.NewIdentitySQLStorage(dbPool)
+	userStorage := storage.NewUserStorage(dbPool)
 	// engines
-	bootstrapEngine := engines.NewBoostrapEngine(identityStorage, bootstrapStorage)
+	bootstrapEngine := engines.NewBoostrapEngine(identityStorage, bootstrapStorage, userStorage)
 	// managers
 	boostrapManager := managers.NewBootstrapManager(bootstrapStorage, bootstrapEngine, identityStorage)
 	identityManager := managers.NewIdentityManager(identityStorage)

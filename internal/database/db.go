@@ -27,14 +27,17 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.addAccessTokenStmt, err = db.PrepareContext(ctx, addAccessToken); err != nil {
 		return nil, fmt.Errorf("error preparing query AddAccessToken: %w", err)
 	}
+	if q.addAppUserStmt, err = db.PrepareContext(ctx, addAppUser); err != nil {
+		return nil, fmt.Errorf("error preparing query AddAppUser: %w", err)
+	}
 	if q.addClientStmt, err = db.PrepareContext(ctx, addClient); err != nil {
 		return nil, fmt.Errorf("error preparing query AddClient: %w", err)
 	}
+	if q.addIdentityUserStmt, err = db.PrepareContext(ctx, addIdentityUser); err != nil {
+		return nil, fmt.Errorf("error preparing query AddIdentityUser: %w", err)
+	}
 	if q.addRefreshTokenStmt, err = db.PrepareContext(ctx, addRefreshToken); err != nil {
 		return nil, fmt.Errorf("error preparing query AddRefreshToken: %w", err)
-	}
-	if q.addUserStmt, err = db.PrepareContext(ctx, addUser); err != nil {
-		return nil, fmt.Errorf("error preparing query AddUser: %w", err)
 	}
 	if q.deleteAccessTokenByIDStmt, err = db.PrepareContext(ctx, deleteAccessTokenByID); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteAccessTokenByID: %w", err)
@@ -42,11 +45,11 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.deleteClientByIDStmt, err = db.PrepareContext(ctx, deleteClientByID); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteClientByID: %w", err)
 	}
+	if q.deleteIdentityUserByIDStmt, err = db.PrepareContext(ctx, deleteIdentityUserByID); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteIdentityUserByID: %w", err)
+	}
 	if q.deleteRefreshTokenByIDStmt, err = db.PrepareContext(ctx, deleteRefreshTokenByID); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteRefreshTokenByID: %w", err)
-	}
-	if q.deleteUserByIDStmt, err = db.PrepareContext(ctx, deleteUserByID); err != nil {
-		return nil, fmt.Errorf("error preparing query DeleteUserByID: %w", err)
 	}
 	if q.getAccessTokenByJWTStmt, err = db.PrepareContext(ctx, getAccessTokenByJWT); err != nil {
 		return nil, fmt.Errorf("error preparing query GetAccessTokenByJWT: %w", err)
@@ -57,11 +60,11 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getClientByIDStmt, err = db.PrepareContext(ctx, getClientByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetClientByID: %w", err)
 	}
+	if q.getIdentityUserByUsernameStmt, err = db.PrepareContext(ctx, getIdentityUserByUsername); err != nil {
+		return nil, fmt.Errorf("error preparing query GetIdentityUserByUsername: %w", err)
+	}
 	if q.getRefreshTokenByJWTStmt, err = db.PrepareContext(ctx, getRefreshTokenByJWT); err != nil {
 		return nil, fmt.Errorf("error preparing query GetRefreshTokenByJWT: %w", err)
-	}
-	if q.getUserByUsernameStmt, err = db.PrepareContext(ctx, getUserByUsername); err != nil {
-		return nil, fmt.Errorf("error preparing query GetUserByUsername: %w", err)
 	}
 	if q.markBootstrapConditionSatisfiedStmt, err = db.PrepareContext(ctx, markBootstrapConditionSatisfied); err != nil {
 		return nil, fmt.Errorf("error preparing query MarkBootstrapConditionSatisfied: %w", err)
@@ -82,19 +85,24 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing addAccessTokenStmt: %w", cerr)
 		}
 	}
+	if q.addAppUserStmt != nil {
+		if cerr := q.addAppUserStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addAppUserStmt: %w", cerr)
+		}
+	}
 	if q.addClientStmt != nil {
 		if cerr := q.addClientStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing addClientStmt: %w", cerr)
 		}
 	}
+	if q.addIdentityUserStmt != nil {
+		if cerr := q.addIdentityUserStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addIdentityUserStmt: %w", cerr)
+		}
+	}
 	if q.addRefreshTokenStmt != nil {
 		if cerr := q.addRefreshTokenStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing addRefreshTokenStmt: %w", cerr)
-		}
-	}
-	if q.addUserStmt != nil {
-		if cerr := q.addUserStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing addUserStmt: %w", cerr)
 		}
 	}
 	if q.deleteAccessTokenByIDStmt != nil {
@@ -107,14 +115,14 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing deleteClientByIDStmt: %w", cerr)
 		}
 	}
+	if q.deleteIdentityUserByIDStmt != nil {
+		if cerr := q.deleteIdentityUserByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteIdentityUserByIDStmt: %w", cerr)
+		}
+	}
 	if q.deleteRefreshTokenByIDStmt != nil {
 		if cerr := q.deleteRefreshTokenByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing deleteRefreshTokenByIDStmt: %w", cerr)
-		}
-	}
-	if q.deleteUserByIDStmt != nil {
-		if cerr := q.deleteUserByIDStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing deleteUserByIDStmt: %w", cerr)
 		}
 	}
 	if q.getAccessTokenByJWTStmt != nil {
@@ -132,14 +140,14 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getClientByIDStmt: %w", cerr)
 		}
 	}
+	if q.getIdentityUserByUsernameStmt != nil {
+		if cerr := q.getIdentityUserByUsernameStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getIdentityUserByUsernameStmt: %w", cerr)
+		}
+	}
 	if q.getRefreshTokenByJWTStmt != nil {
 		if cerr := q.getRefreshTokenByJWTStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getRefreshTokenByJWTStmt: %w", cerr)
-		}
-	}
-	if q.getUserByUsernameStmt != nil {
-		if cerr := q.getUserByUsernameStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing getUserByUsernameStmt: %w", cerr)
 		}
 	}
 	if q.markBootstrapConditionSatisfiedStmt != nil {
@@ -197,18 +205,19 @@ type Queries struct {
 	db                                  DBTX
 	tx                                  *sql.Tx
 	addAccessTokenStmt                  *sql.Stmt
+	addAppUserStmt                      *sql.Stmt
 	addClientStmt                       *sql.Stmt
+	addIdentityUserStmt                 *sql.Stmt
 	addRefreshTokenStmt                 *sql.Stmt
-	addUserStmt                         *sql.Stmt
 	deleteAccessTokenByIDStmt           *sql.Stmt
 	deleteClientByIDStmt                *sql.Stmt
+	deleteIdentityUserByIDStmt          *sql.Stmt
 	deleteRefreshTokenByIDStmt          *sql.Stmt
-	deleteUserByIDStmt                  *sql.Stmt
 	getAccessTokenByJWTStmt             *sql.Stmt
 	getBoostrapConditionsStmt           *sql.Stmt
 	getClientByIDStmt                   *sql.Stmt
+	getIdentityUserByUsernameStmt       *sql.Stmt
 	getRefreshTokenByJWTStmt            *sql.Stmt
-	getUserByUsernameStmt               *sql.Stmt
 	markBootstrapConditionSatisfiedStmt *sql.Stmt
 	revokeAccessTokenByIDStmt           *sql.Stmt
 	revokeRefreshTokenByIDStmt          *sql.Stmt
@@ -219,18 +228,19 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		db:                                  tx,
 		tx:                                  tx,
 		addAccessTokenStmt:                  q.addAccessTokenStmt,
+		addAppUserStmt:                      q.addAppUserStmt,
 		addClientStmt:                       q.addClientStmt,
+		addIdentityUserStmt:                 q.addIdentityUserStmt,
 		addRefreshTokenStmt:                 q.addRefreshTokenStmt,
-		addUserStmt:                         q.addUserStmt,
 		deleteAccessTokenByIDStmt:           q.deleteAccessTokenByIDStmt,
 		deleteClientByIDStmt:                q.deleteClientByIDStmt,
+		deleteIdentityUserByIDStmt:          q.deleteIdentityUserByIDStmt,
 		deleteRefreshTokenByIDStmt:          q.deleteRefreshTokenByIDStmt,
-		deleteUserByIDStmt:                  q.deleteUserByIDStmt,
 		getAccessTokenByJWTStmt:             q.getAccessTokenByJWTStmt,
 		getBoostrapConditionsStmt:           q.getBoostrapConditionsStmt,
 		getClientByIDStmt:                   q.getClientByIDStmt,
+		getIdentityUserByUsernameStmt:       q.getIdentityUserByUsernameStmt,
 		getRefreshTokenByJWTStmt:            q.getRefreshTokenByJWTStmt,
-		getUserByUsernameStmt:               q.getUserByUsernameStmt,
 		markBootstrapConditionSatisfiedStmt: q.markBootstrapConditionSatisfiedStmt,
 		revokeAccessTokenByIDStmt:           q.revokeAccessTokenByIDStmt,
 		revokeRefreshTokenByIDStmt:          q.revokeRefreshTokenByIDStmt,

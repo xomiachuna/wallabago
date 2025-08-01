@@ -27,3 +27,9 @@ type WallabagoBootstrap struct {
 	ConditionName string
 	Satisfied     bool
 }
+
+type WallabagoUser struct {
+	UserID   string
+	IsAdmin  bool
+	Username string
+}

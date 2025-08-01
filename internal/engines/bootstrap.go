@@ -31,15 +31,18 @@ type BootstrapEngine interface {
 type bootstrapEngine struct {
 	identity storage.IdentitySQLStorage
 	boostrap storage.BoostrapSQLStorage
+	users    storage.UserStorage
 }
 
 func NewBoostrapEngine(
 	identity storage.IdentitySQLStorage,
 	boostrap storage.BoostrapSQLStorage,
+	users storage.UserStorage,
 ) BootstrapEngine {
 	return &bootstrapEngine{
 		identity: identity,
 		boostrap: boostrap,
+		users:    users,
 	}
 }
 
@@ -69,8 +72,14 @@ func (e *bootstrapEngine) CreateAdminAccount(ctx context.Context, bootstrapCtx B
 		return errors.WithStack(err)
 	}
 
-	// TODO: create a user in app users with mapped identity id
-	// panic("todo: implement app users saving")
+	err = e.users.AddUser(ctx, bootstrapCtx.appTx, core.User{
+		ID:       adminUser.ID,
+		IsAdmin:  true,
+		Username: adminUser.Username,
+	})
+	if err != nil {
+		return errors.WithStack(err)
+	}
 
 	err = e.boostrap.MarkBootstrapConditionSatisfied(ctx, bootstrapCtx.appTx, core.ConditionAdminCreated)
 	if err != nil {

@@ -17,7 +17,9 @@ SET
 RETURNING
 	condition_name,
 	satisfied
-;-- name: AddClient :one
+;
+
+-- name: AddClient :one
 INSERT INTO
 	identity.clients (client_id, client_secret)
 VALUES
@@ -45,7 +47,7 @@ WHERE
 	client_id = $1
 ;
 
--- name: AddUser :one
+-- name: AddIdentityUser :one
 INSERT INTO
 	identity.users (user_id, username, email, password_hash)
 VALUES
@@ -57,7 +59,7 @@ RETURNING
 	password_hash
 ;
 
--- name: GetUserByUsername :one
+-- name: GetIdentityUserByUsername :one
 SELECT
 	user_id,
 	username,
@@ -71,7 +73,7 @@ LIMIT
 	1
 ;
 
--- name: DeleteUserByID :exec
+-- name: DeleteIdentityUserByID :exec
 DELETE FROM identity.users
 WHERE
 	user_id = $1
@@ -194,4 +196,15 @@ RETURNING
 DELETE FROM identity.access_tokens
 WHERE
 	token_id = $1
+;
+
+-- name: AddAppUser :one
+INSERT INTO
+	wallabago.users (user_id, is_admin, username)
+VALUES
+	($1, $2, $3)
+RETURNING
+	user_id,
+	is_admin,
+	username
 ;

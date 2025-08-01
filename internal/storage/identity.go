@@ -28,7 +28,7 @@ type IdentitySQLStorage interface {
 	GetUserInfoByUsername(ctx context.Context, tx *sql.Tx, username string) (*core.UserInfo, error)
 	DeleteUserInfoByID(ctx context.Context, tx *sql.Tx, id string) error
 
-	Begin(ctx context.Context) (*sql.Tx, error)
+	TransactionStarter
 }
 
 // identitySQLStorage is an implementation of [IdentitySQLStorage]
@@ -192,7 +192,7 @@ func (s *identitySQLStorage) DeleteRefreshTokenByID(ctx context.Context, tx *sql
 
 func (s *identitySQLStorage) AddUserInfo(ctx context.Context, tx *sql.Tx, user core.UserInfo) error {
 	q := s.queries.WithTx(tx)
-	_, err := q.AddUser(ctx, database.AddUserParams{
+	_, err := q.AddIdentityUser(ctx, database.AddIdentityUserParams{
 		UserID:       user.ID,
 		Username:     user.Username,
 		Email:        user.Email,
@@ -206,7 +206,7 @@ func (s *identitySQLStorage) AddUserInfo(ctx context.Context, tx *sql.Tx, user c
 
 func (s *identitySQLStorage) GetUserInfoByUsername(ctx context.Context, tx *sql.Tx, username string) (*core.UserInfo, error) {
 	q := s.queries.WithTx(tx)
-	result, err := q.GetUserByUsername(ctx, username)
+	result, err := q.GetIdentityUserByUsername(ctx, username)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -220,7 +220,7 @@ func (s *identitySQLStorage) GetUserInfoByUsername(ctx context.Context, tx *sql.
 
 func (s *identitySQLStorage) DeleteUserInfoByID(ctx context.Context, tx *sql.Tx, id string) error {
 	q := s.queries.WithTx(tx)
-	err := q.DeleteUserByID(ctx, id)
+	err := q.DeleteIdentityUserByID(ctx, id)
 	if err != nil {
 		return errors.WithStack(err)
 	}

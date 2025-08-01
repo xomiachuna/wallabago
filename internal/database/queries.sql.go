@@ -95,6 +95,30 @@ func (q *Queries) AddAccessToken(ctx context.Context, arg AddAccessTokenParams) 
 	return &i, err
 }
 
+const addAppUser = `-- name: AddAppUser :one
+INSERT INTO
+	wallabago.users (user_id, is_admin, username)
+VALUES
+	($1, $2, $3)
+RETURNING
+	user_id,
+	is_admin,
+	username
+`
+
+type AddAppUserParams struct {
+	UserID   string
+	IsAdmin  bool
+	Username string
+}
+
+func (q *Queries) AddAppUser(ctx context.Context, arg AddAppUserParams) (*WallabagoUser, error) {
+	row := q.queryRow(ctx, q.addAppUserStmt, addAppUser, arg.UserID, arg.IsAdmin, arg.Username)
+	var i WallabagoUser
+	err := row.Scan(&i.UserID, &i.IsAdmin, &i.Username)
+	return &i, err
+}
+
 const addClient = `-- name: AddClient :one
 INSERT INTO
 	identity.clients (client_id, client_secret)
@@ -114,6 +138,42 @@ func (q *Queries) AddClient(ctx context.Context, arg AddClientParams) (*Identity
 	row := q.queryRow(ctx, q.addClientStmt, addClient, arg.ClientID, arg.ClientSecret)
 	var i IdentityClient
 	err := row.Scan(&i.ClientID, &i.ClientSecret)
+	return &i, err
+}
+
+const addIdentityUser = `-- name: AddIdentityUser :one
+INSERT INTO
+	identity.users (user_id, username, email, password_hash)
+VALUES
+	($1, $2, $3, $4)
+RETURNING
+	user_id,
+	username,
+	email,
+	password_hash
+`
+
+type AddIdentityUserParams struct {
+	UserID       string
+	Username     string
+	Email        string
+	PasswordHash []byte
+}
+
+func (q *Queries) AddIdentityUser(ctx context.Context, arg AddIdentityUserParams) (*IdentityUser, error) {
+	row := q.queryRow(ctx, q.addIdentityUserStmt, addIdentityUser,
+		arg.UserID,
+		arg.Username,
+		arg.Email,
+		arg.PasswordHash,
+	)
+	var i IdentityUser
+	err := row.Scan(
+		&i.UserID,
+		&i.Username,
+		&i.Email,
+		&i.PasswordHash,
+	)
 	return &i, err
 }
 
@@ -153,42 +213,6 @@ func (q *Queries) AddRefreshToken(ctx context.Context, arg AddRefreshTokenParams
 	return &i, err
 }
 
-const addUser = `-- name: AddUser :one
-INSERT INTO
-	identity.users (user_id, username, email, password_hash)
-VALUES
-	($1, $2, $3, $4)
-RETURNING
-	user_id,
-	username,
-	email,
-	password_hash
-`
-
-type AddUserParams struct {
-	UserID       string
-	Username     string
-	Email        string
-	PasswordHash []byte
-}
-
-func (q *Queries) AddUser(ctx context.Context, arg AddUserParams) (*IdentityUser, error) {
-	row := q.queryRow(ctx, q.addUserStmt, addUser,
-		arg.UserID,
-		arg.Username,
-		arg.Email,
-		arg.PasswordHash,
-	)
-	var i IdentityUser
-	err := row.Scan(
-		&i.UserID,
-		&i.Username,
-		&i.Email,
-		&i.PasswordHash,
-	)
-	return &i, err
-}
-
 const deleteAccessTokenByID = `-- name: DeleteAccessTokenByID :exec
 DELETE FROM identity.access_tokens
 WHERE
@@ -211,6 +235,17 @@ func (q *Queries) DeleteClientByID(ctx context.Context, clientID string) error {
 	return err
 }
 
+const deleteIdentityUserByID = `-- name: DeleteIdentityUserByID :exec
+DELETE FROM identity.users
+WHERE
+	user_id = $1
+`
+
+func (q *Queries) DeleteIdentityUserByID(ctx context.Context, userID string) error {
+	_, err := q.exec(ctx, q.deleteIdentityUserByIDStmt, deleteIdentityUserByID, userID)
+	return err
+}
+
 const deleteRefreshTokenByID = `-- name: DeleteRefreshTokenByID :exec
 DELETE FROM identity.refresh_tokens
 WHERE
@@ -219,17 +254,6 @@ WHERE
 
 func (q *Queries) DeleteRefreshTokenByID(ctx context.Context, tokenID string) error {
 	_, err := q.exec(ctx, q.deleteRefreshTokenByIDStmt, deleteRefreshTokenByID, tokenID)
-	return err
-}
-
-const deleteUserByID = `-- name: DeleteUserByID :exec
-DELETE FROM identity.users
-WHERE
-	user_id = $1
-`
-
-func (q *Queries) DeleteUserByID(ctx context.Context, userID string) error {
-	_, err := q.exec(ctx, q.deleteUserByIDStmt, deleteUserByID, userID)
 	return err
 }
 
@@ -334,6 +358,32 @@ func (q *Queries) GetClientByID(ctx context.Context, clientID string) (*Identity
 	return &i, err
 }
 
+const getIdentityUserByUsername = `-- name: GetIdentityUserByUsername :one
+SELECT
+	user_id,
+	username,
+	email,
+	password_hash
+FROM
+	identity.users
+WHERE
+	username = $1
+LIMIT
+	1
+`
+
+func (q *Queries) GetIdentityUserByUsername(ctx context.Context, username string) (*IdentityUser, error) {
+	row := q.queryRow(ctx, q.getIdentityUserByUsernameStmt, getIdentityUserByUsername, username)
+	var i IdentityUser
+	err := row.Scan(
+		&i.UserID,
+		&i.Username,
+		&i.Email,
+		&i.PasswordHash,
+	)
+	return &i, err
+}
+
 const getRefreshTokenByJWT = `-- name: GetRefreshTokenByJWT :one
 SELECT
 	token_id,
@@ -356,32 +406,6 @@ func (q *Queries) GetRefreshTokenByJWT(ctx context.Context, jwt string) (*Identi
 		&i.ClientID,
 		&i.Jwt,
 		&i.Revoked,
-	)
-	return &i, err
-}
-
-const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT
-	user_id,
-	username,
-	email,
-	password_hash
-FROM
-	identity.users
-WHERE
-	username = $1
-LIMIT
-	1
-`
-
-func (q *Queries) GetUserByUsername(ctx context.Context, username string) (*IdentityUser, error) {
-	row := q.queryRow(ctx, q.getUserByUsernameStmt, getUserByUsername, username)
-	var i IdentityUser
-	err := row.Scan(
-		&i.UserID,
-		&i.Username,
-		&i.Email,
-		&i.PasswordHash,
 	)
 	return &i, err
 }
