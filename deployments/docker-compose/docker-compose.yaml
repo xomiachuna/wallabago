@@ -49,6 +49,13 @@ services:
       WALLABAGO_PORT: 7080
     ports:
       - 7080:7080
+    develop:
+      watch:
+        - path: ../../internal/
+          action: rebuild
+        - path: ../../cmd/
+          action: rebuild
+
 
   postgres:
     networks:

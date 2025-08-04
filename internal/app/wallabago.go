@@ -11,6 +11,7 @@ import (
 	"github.com/andriihomiak/wallabago/internal/database"
 	"github.com/andriihomiak/wallabago/internal/engines"
 	"github.com/andriihomiak/wallabago/internal/http/handlers"
+	"github.com/andriihomiak/wallabago/internal/http/handlers/docs"
 	"github.com/andriihomiak/wallabago/internal/http/middleware"
 	"github.com/andriihomiak/wallabago/internal/instrumentation"
 	"github.com/andriihomiak/wallabago/internal/managers"
@@ -112,11 +113,14 @@ func (w *Wallabago) Handler() http.Handler {
 
 	ui := handlers.NewWebUI()
 	api := handlers.NewAPI()
+	openAPI := docs.NewOpenAPI()
 
 	mux.HandleFunc("/", ui.Index)
+	mux.Handle("/docs/", http.StripPrefix("/docs/", http.HandlerFunc(openAPI.OpenAPIUI)))
 	mux.Handle("/protected", auth.Wrap(http.HandlerFunc(api.AuthInfo)))
 
 	globalMiddleware := middleware.NewChain(
+		middleware.LoggingMiddleware,
 		middleware.NewOtelHTTPMiddleware(),
 	)
 

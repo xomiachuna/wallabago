@@ -30,7 +30,7 @@ lint: format
 		-e GOMODCACHE=/.cache/mod \
 		-e GOLANGCI_LINT_CACHE=/.cache/golangci-lint \
 		-v ~/.cache/golagci-lint-docker:/.cache \
-		golangci/golangci-lint:v2.2.2 golangci-lint run
+		golangci/golangci-lint:v2.2.2 golangci-lint run --color never
 
 .PHONY: format
 format:
@@ -39,7 +39,7 @@ format:
 		-e GOMODCACHE=/.cache/mod \
 		-e GOLANGCI_LINT_CACHE=/.cache/golangci-lint \
 		-v ~/.cache/golagci-lint-docker:/.cache \
-		golangci/golangci-lint:v2.2.2 golangci-lint fmt
+		golangci/golangci-lint:v2.2.2 golangci-lint fmt 
 
 .PHONY: test
 test:
