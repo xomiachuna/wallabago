@@ -1,6 +1,9 @@
 package middleware
 
-import "net/http"
+import (
+	"net/http"
+	"slices"
+)
 
 type Middleware interface {
 	Wrap(handler http.Handler) http.Handler
@@ -13,6 +16,9 @@ type Chain struct {
 }
 
 func NewChain(middlewares ...Middleware) *Chain {
+	// the order of application needs to be reversed
+	middlewares = slices.Clone(middlewares)
+	slices.Reverse(middlewares)
 	return &Chain{
 		middlewares: middlewares,
 	}

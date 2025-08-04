@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -23,7 +24,12 @@ const indexPage = `<!DOCTYPE html>
 
 type WebUI struct{}
 
-func (s *WebUI) Index(w http.ResponseWriter, _ *http.Request) {
+func NewWebUI() *WebUI {
+	return &WebUI{}
+}
+
+func (s *WebUI) Index(w http.ResponseWriter, r *http.Request) {
+	slog.DebugContext(r.Context(), "index", "pattern", r.Pattern)
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set(constants.HeaderContentType, constants.MimeTextHTML)
 	fmt.Fprintf(w, indexPage, time.Now().UTC().Format(time.Layout))

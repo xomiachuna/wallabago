@@ -16,6 +16,7 @@ func NewIdentityManager(
 	return &IdentityManager{
 		storage:         identityStorage,
 		tokenExpiration: time.Hour * 24,
+		key:             []byte("wallabago"), // todo: pass from outside
 	}
 }
 
@@ -145,4 +146,26 @@ func (m *IdentityManager) RefreshTokenFlow(ctx context.Context, req core.Refresh
 	// save the token
 	// return
 	panic("todo")
+}
+
+func (m *IdentityManager) Authenticate(ctx context.Context, accessToken string) (*core.AccessToken, error) {
+	// todo: check signature first
+	tx, err := m.storage.Begin(ctx)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	//nolint:errcheck //ok here since we dont do any writes
+	defer tx.Rollback()
+	token, err := m.storage.GetAccessTokenByJWT(ctx, tx, core.JWT(accessToken))
+	if err != nil {
+		return nil, &core.AuthError{
+			ErrorName: core.AuthErrorUnauthorized,
+		}
+	}
+	if token.Revoked {
+		return nil, &core.AuthError{
+			ErrorName: core.AuthErrorUnauthorized,
+		}
+	}
+	return token, nil
 }

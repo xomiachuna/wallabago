@@ -102,22 +102,25 @@ func (w *Wallabago) Prepare(ctx context.Context) error {
 	return nil
 }
 
-func (w *Wallabago) RegisterHandlers(mux *http.ServeMux) {
-	innerMux := http.NewServeMux()
+func (w *Wallabago) Handler() http.Handler {
+	mux := http.NewServeMux()
+
+	auth := middleware.NewOAuth2Middleware(w.identityManager)
 
 	oauth2 := handlers.NewOAuth2Handler(w.identityManager)
-	innerMux.HandleFunc("POST /oauth/v2/token", oauth2.TokenEndpoint)
+	mux.HandleFunc("POST /oauth/v2/token", oauth2.TokenEndpoint)
 
-	ui := handlers.WebUI{}
-	innerMux.HandleFunc("/", ui.Index)
+	ui := handlers.NewWebUI()
+	api := handlers.NewAPI()
+
+	mux.HandleFunc("/", ui.Index)
+	mux.Handle("/protected", auth.Wrap(http.HandlerFunc(api.AuthInfo)))
 
 	globalMiddleware := middleware.NewChain(
 		middleware.NewOtelHTTPMiddleware(),
 	)
 
-	rootHandler := globalMiddleware.Wrap(innerMux)
-
-	mux.Handle("/", rootHandler)
+	return globalMiddleware.Wrap(mux)
 }
 
 func (w *Wallabago) bootstrap(ctx context.Context) error {

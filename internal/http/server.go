@@ -40,13 +40,9 @@ func (s *Server) Start() error {
 	)
 	defer stopListeningForInterrupt()
 
-	rootHandler := http.NewServeMux()
-
-	s.app.RegisterHandlers(rootHandler)
-
 	server := &http.Server{
 		Addr:    s.app.Addr(),
-		Handler: rootHandler,
+		Handler: s.app.Handler(),
 		// the context here is the one cancellable by interrupt
 		BaseContext: func(_ net.Listener) context.Context { return rootCtx },
 		// preventing slowloris attack as advised by gosec - increase if needed
@@ -63,7 +59,7 @@ func (s *Server) Start() error {
 	// start the server and wait for server error
 	serveErr := make(chan error, 1)
 	go func(serveErr chan<- error) {
-		slog.Info("Starting server", "addr", server.Addr)
+		slog.InfoContext(rootCtx, "Starting server", "addr", "http://"+server.Addr)
 		serveErr <- server.ListenAndServe()
 	}(serveErr)
 

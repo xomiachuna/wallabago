@@ -159,6 +159,8 @@ const (
 	AuthErrorUnauthorizedClient   = "unauthorized_client"
 	AuthErrorUnsupportedGrantType = "unsupported_grant_type"
 	AuthErrorInvalidScope         = "invalid_scope"
+	// todo: check if proper semantics are used
+	AuthErrorUnauthorized = "unauthorized"
 )
 
 type AuthError struct {
