@@ -14,6 +14,6 @@ func NewAPI() *API {
 }
 
 func (a *API) AuthInfo(w http.ResponseWriter, r *http.Request) {
-	token := middleware.GetAccessToken(r)
+	token := middleware.MustGetAccessToken(r)
 	response.RespondOKJSON(w, r, token)
 }

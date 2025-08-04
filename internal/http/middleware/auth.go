@@ -37,7 +37,9 @@ func (m *oAuth2Middleware) withToken(r *http.Request, accessToken *core.AccessTo
 	return r.WithContext(context.WithValue(r.Context(), ctxTokenKey, accessToken))
 }
 
-func GetAccessToken(r *http.Request) core.AccessToken {
+// MustGetAccessToken returns the access token stored in the request
+// or panics if none is present.
+func MustGetAccessToken(r *http.Request) core.AccessToken {
 	token, ok := r.Context().Value(ctxTokenKey).(*core.AccessToken)
 	if !ok || token == nil {
 		panic("tried to access token when none is injected")
