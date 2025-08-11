@@ -2,16 +2,38 @@ package managers
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/andriihomiak/wallabago/internal/core"
-	"github.com/andriihomiak/wallabago/internal/storage"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 )
 
+type IdentityStorage interface {
+	AddClient(ctx context.Context, tx *sql.Tx, client core.Client) error
+	GetClientByID(ctx context.Context, tx *sql.Tx, id string) (*core.Client, error)
+	DeleteClientByID(ctx context.Context, tx *sql.Tx, id string) error
+
+	AddAccessToken(ctx context.Context, tx *sql.Tx, refreshTokenID string, token core.AccessToken) error
+	GetAccessTokenByJWT(ctx context.Context, tx *sql.Tx, jwt core.JWT) (*core.AccessToken, error)
+	RevokeAccessTokenByID(ctx context.Context, tx *sql.Tx, id string) error
+	DeleteAccessTokenByID(ctx context.Context, tx *sql.Tx, id string) error
+
+	AddRefreshToken(ctx context.Context, tx *sql.Tx, token core.RefreshToken) error
+	GetRefreshTokenByJWT(ctx context.Context, tx *sql.Tx, refreshToken core.JWT) (*core.RefreshToken, error)
+	RevokeRefreshTokenByID(ctx context.Context, tx *sql.Tx, id string) error
+	DeleteRefreshTokenByID(ctx context.Context, tx *sql.Tx, id string) error
+
+	AddUserInfo(ctx context.Context, tx *sql.Tx, user core.UserInfo) error
+	GetUserInfoByUsername(ctx context.Context, tx *sql.Tx, username string) (*core.UserInfo, error)
+	DeleteUserInfoByID(ctx context.Context, tx *sql.Tx, id string) error
+
+	transactionStarter
+}
+
 func NewIdentityManager(
-	identityStorage storage.IdentitySQLStorage,
+	identityStorage IdentityStorage,
 ) *IdentityManager {
 	return &IdentityManager{
 		storage:         identityStorage,
@@ -21,7 +43,7 @@ func NewIdentityManager(
 }
 
 type IdentityManager struct {
-	storage         storage.IdentitySQLStorage
+	storage         IdentityStorage
 	key             []byte
 	tokenExpiration time.Duration
 }
@@ -32,7 +54,7 @@ func (m *IdentityManager) PasswordFlow(ctx context.Context, req core.PasswordFlo
 		return nil, errors.WithStack(err)
 	}
 	defer func() {
-		storage.RollbackOnError(ctx, err, tx.Rollback)
+		rollbackOnError(ctx, err, tx.Rollback)
 	}()
 
 	// check client credentials
@@ -123,7 +145,7 @@ func (m *IdentityManager) RefreshTokenFlow(ctx context.Context, req core.Refresh
 		return nil, errors.WithStack(err)
 	}
 	defer func() {
-		storage.RollbackOnError(ctx, err, tx.Rollback)
+		rollbackOnError(ctx, err, tx.Rollback)
 	}()
 
 	// check client credentials

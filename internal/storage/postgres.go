@@ -9,49 +9,50 @@ import (
 	"github.com/pkg/errors"
 )
 
-type IdentitySQLStorage interface {
-	AddClient(ctx context.Context, tx *sql.Tx, client core.Client) error
-	GetClientByID(ctx context.Context, tx *sql.Tx, id string) (*core.Client, error)
-	DeleteClientByID(ctx context.Context, tx *sql.Tx, id string) error
-
-	AddAccessToken(ctx context.Context, tx *sql.Tx, refreshTokenID string, token core.AccessToken) error
-	GetAccessTokenByJWT(ctx context.Context, tx *sql.Tx, jwt core.JWT) (*core.AccessToken, error)
-	RevokeAccessTokenByID(ctx context.Context, tx *sql.Tx, id string) error
-	DeleteAccessTokenByID(ctx context.Context, tx *sql.Tx, id string) error
-
-	AddRefreshToken(ctx context.Context, tx *sql.Tx, token core.RefreshToken) error
-	GetRefreshTokenByJWT(ctx context.Context, tx *sql.Tx, refreshToken core.JWT) (*core.RefreshToken, error)
-	RevokeRefreshTokenByID(ctx context.Context, tx *sql.Tx, id string) error
-	DeleteRefreshTokenByID(ctx context.Context, tx *sql.Tx, id string) error
-
-	AddUserInfo(ctx context.Context, tx *sql.Tx, user core.UserInfo) error
-	GetUserInfoByUsername(ctx context.Context, tx *sql.Tx, username string) (*core.UserInfo, error)
-	DeleteUserInfoByID(ctx context.Context, tx *sql.Tx, id string) error
-
-	TransactionStarter
-}
-
-// identitySQLStorage is an implementation of [IdentitySQLStorage]
-// that uses sqlc codegen to access the database.
-type identitySQLStorage struct {
+type PostgreSQLStorage struct {
+	pool    *sql.DB
 	queries *database.Queries
-	db      *sql.DB
 }
 
-func NewIdentitySQLStorage(db *sql.DB) IdentitySQLStorage {
-	return &identitySQLStorage{
-		queries: database.New(db),
-		db:      db,
+func NewPostreSQLStorage(pool *sql.DB) *PostgreSQLStorage {
+	return &PostgreSQLStorage{
+		pool:    pool,
+		queries: database.New(pool),
 	}
 }
 
-var _ IdentitySQLStorage = (*identitySQLStorage)(nil)
-
-func (s *identitySQLStorage) Begin(ctx context.Context) (*sql.Tx, error) {
-	return s.db.BeginTx(ctx, nil)
+func (s *PostgreSQLStorage) Begin(ctx context.Context) (*sql.Tx, error) {
+	return s.pool.BeginTx(ctx, nil)
 }
 
-func (s *identitySQLStorage) AddClient(ctx context.Context, tx *sql.Tx, client core.Client) error {
+func (s *PostgreSQLStorage) GetBootstrapConditions(ctx context.Context, tx *sql.Tx) ([]core.Condition, error) {
+	q := s.queries.WithTx(tx)
+	res, err := q.GetBoostrapConditions(ctx)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	conditions := make([]core.Condition, 0, len(res))
+	for _, condition := range res {
+		conditions = append(conditions, core.Condition{
+			Name:      core.ConditionName(condition.ConditionName),
+			Satisfied: condition.Satisfied,
+		})
+	}
+	return conditions, nil
+}
+
+func (s *PostgreSQLStorage) MarkBootstrapConditionSatisfied(
+	ctx context.Context, tx *sql.Tx, condition core.ConditionName,
+) error {
+	q := s.queries.WithTx(tx)
+	_, err := q.MarkBootstrapConditionSatisfied(ctx, string(condition))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func (s *PostgreSQLStorage) AddClient(ctx context.Context, tx *sql.Tx, client core.Client) error {
 	q := s.queries.WithTx(tx)
 	_, err := q.AddClient(ctx, database.AddClientParams{
 		ClientID:     client.ID,
@@ -63,7 +64,7 @@ func (s *identitySQLStorage) AddClient(ctx context.Context, tx *sql.Tx, client c
 	return nil
 }
 
-func (s *identitySQLStorage) GetClientByID(ctx context.Context, tx *sql.Tx, id string) (*core.Client, error) {
+func (s *PostgreSQLStorage) GetClientByID(ctx context.Context, tx *sql.Tx, id string) (*core.Client, error) {
 	q := s.queries.WithTx(tx)
 	result, err := q.GetClientByID(ctx, id)
 	if err != nil {
@@ -75,7 +76,7 @@ func (s *identitySQLStorage) GetClientByID(ctx context.Context, tx *sql.Tx, id s
 	}, nil
 }
 
-func (s *identitySQLStorage) DeleteClientByID(ctx context.Context, tx *sql.Tx, id string) error {
+func (s *PostgreSQLStorage) DeleteClientByID(ctx context.Context, tx *sql.Tx, id string) error {
 	q := s.queries.WithTx(tx)
 	err := q.DeleteClientByID(ctx, id)
 	if err != nil {
@@ -84,7 +85,7 @@ func (s *identitySQLStorage) DeleteClientByID(ctx context.Context, tx *sql.Tx, i
 	return nil
 }
 
-func (s *identitySQLStorage) AddAccessToken(ctx context.Context, tx *sql.Tx, refreshTokenID string, token core.AccessToken) error {
+func (s *PostgreSQLStorage) AddAccessToken(ctx context.Context, tx *sql.Tx, refreshTokenID string, token core.AccessToken) error {
 	q := s.queries.WithTx(tx)
 	_, err := q.AddAccessToken(ctx, database.AddAccessTokenParams{
 		TokenID:  token.ID,
@@ -107,7 +108,7 @@ func (s *identitySQLStorage) AddAccessToken(ctx context.Context, tx *sql.Tx, ref
 	return nil
 }
 
-func (s *identitySQLStorage) GetAccessTokenByJWT(ctx context.Context, tx *sql.Tx, jwt core.JWT) (*core.AccessToken, error) {
+func (s *PostgreSQLStorage) GetAccessTokenByJWT(ctx context.Context, tx *sql.Tx, jwt core.JWT) (*core.AccessToken, error) {
 	q := s.queries.WithTx(tx)
 	result, err := q.GetAccessTokenByJWT(ctx, string(jwt))
 	if err != nil {
@@ -126,7 +127,7 @@ func (s *identitySQLStorage) GetAccessTokenByJWT(ctx context.Context, tx *sql.Tx
 	}, nil
 }
 
-func (s *identitySQLStorage) RevokeAccessTokenByID(ctx context.Context, tx *sql.Tx, id string) error {
+func (s *PostgreSQLStorage) RevokeAccessTokenByID(ctx context.Context, tx *sql.Tx, id string) error {
 	q := s.queries.WithTx(tx)
 	_, err := q.RevokeAccessTokenByID(ctx, id)
 	if err != nil {
@@ -135,7 +136,7 @@ func (s *identitySQLStorage) RevokeAccessTokenByID(ctx context.Context, tx *sql.
 	return nil
 }
 
-func (s *identitySQLStorage) DeleteAccessTokenByID(ctx context.Context, tx *sql.Tx, id string) error {
+func (s *PostgreSQLStorage) DeleteAccessTokenByID(ctx context.Context, tx *sql.Tx, id string) error {
 	q := s.queries.WithTx(tx)
 	err := q.DeleteAccessTokenByID(ctx, id)
 	if err != nil {
@@ -144,7 +145,7 @@ func (s *identitySQLStorage) DeleteAccessTokenByID(ctx context.Context, tx *sql.
 	return nil
 }
 
-func (s *identitySQLStorage) AddRefreshToken(ctx context.Context, tx *sql.Tx, token core.RefreshToken) error {
+func (s *PostgreSQLStorage) AddRefreshToken(ctx context.Context, tx *sql.Tx, token core.RefreshToken) error {
 	q := s.queries.WithTx(tx)
 	_, err := q.AddRefreshToken(ctx, database.AddRefreshTokenParams{
 		TokenID:  token.ID,
@@ -158,7 +159,7 @@ func (s *identitySQLStorage) AddRefreshToken(ctx context.Context, tx *sql.Tx, to
 	return nil
 }
 
-func (s *identitySQLStorage) GetRefreshTokenByJWT(ctx context.Context, tx *sql.Tx, refreshToken core.JWT) (*core.RefreshToken, error) {
+func (s *PostgreSQLStorage) GetRefreshTokenByJWT(ctx context.Context, tx *sql.Tx, refreshToken core.JWT) (*core.RefreshToken, error) {
 	q := s.queries.WithTx(tx)
 	result, err := q.GetRefreshTokenByJWT(ctx, string(refreshToken))
 	if err != nil {
@@ -172,7 +173,7 @@ func (s *identitySQLStorage) GetRefreshTokenByJWT(ctx context.Context, tx *sql.T
 	}, nil
 }
 
-func (s *identitySQLStorage) RevokeRefreshTokenByID(ctx context.Context, tx *sql.Tx, id string) error {
+func (s *PostgreSQLStorage) RevokeRefreshTokenByID(ctx context.Context, tx *sql.Tx, id string) error {
 	q := s.queries.WithTx(tx)
 	_, err := q.RevokeRefreshTokenByID(ctx, id)
 	if err != nil {
@@ -181,7 +182,7 @@ func (s *identitySQLStorage) RevokeRefreshTokenByID(ctx context.Context, tx *sql
 	return nil
 }
 
-func (s *identitySQLStorage) DeleteRefreshTokenByID(ctx context.Context, tx *sql.Tx, id string) error {
+func (s *PostgreSQLStorage) DeleteRefreshTokenByID(ctx context.Context, tx *sql.Tx, id string) error {
 	q := s.queries.WithTx(tx)
 	err := q.DeleteRefreshTokenByID(ctx, id)
 	if err != nil {
@@ -190,7 +191,7 @@ func (s *identitySQLStorage) DeleteRefreshTokenByID(ctx context.Context, tx *sql
 	return nil
 }
 
-func (s *identitySQLStorage) AddUserInfo(ctx context.Context, tx *sql.Tx, user core.UserInfo) error {
+func (s *PostgreSQLStorage) AddUserInfo(ctx context.Context, tx *sql.Tx, user core.UserInfo) error {
 	q := s.queries.WithTx(tx)
 	_, err := q.AddIdentityUser(ctx, database.AddIdentityUserParams{
 		UserID:       user.ID,
@@ -204,7 +205,7 @@ func (s *identitySQLStorage) AddUserInfo(ctx context.Context, tx *sql.Tx, user c
 	return nil
 }
 
-func (s *identitySQLStorage) GetUserInfoByUsername(ctx context.Context, tx *sql.Tx, username string) (*core.UserInfo, error) {
+func (s *PostgreSQLStorage) GetUserInfoByUsername(ctx context.Context, tx *sql.Tx, username string) (*core.UserInfo, error) {
 	q := s.queries.WithTx(tx)
 	result, err := q.GetIdentityUserByUsername(ctx, username)
 	if err != nil {
@@ -218,9 +219,22 @@ func (s *identitySQLStorage) GetUserInfoByUsername(ctx context.Context, tx *sql.
 	}, nil
 }
 
-func (s *identitySQLStorage) DeleteUserInfoByID(ctx context.Context, tx *sql.Tx, id string) error {
+func (s *PostgreSQLStorage) DeleteUserInfoByID(ctx context.Context, tx *sql.Tx, id string) error {
 	q := s.queries.WithTx(tx)
 	err := q.DeleteIdentityUserByID(ctx, id)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
+}
+
+func (s *PostgreSQLStorage) AddUser(ctx context.Context, tx *sql.Tx, user core.User) error {
+	q := s.queries.WithTx(tx)
+	_, err := q.AddAppUser(ctx, database.AddAppUserParams{
+		UserID:   user.ID,
+		IsAdmin:  user.IsAdmin,
+		Username: user.Username,
+	})
 	if err != nil {
 		return errors.WithStack(err)
 	}

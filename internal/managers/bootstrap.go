@@ -2,35 +2,42 @@ package managers
 
 import (
 	"context"
+	"database/sql"
 	"log/slog"
 	"maps"
 
 	"github.com/andriihomiak/wallabago/internal/core"
-	"github.com/andriihomiak/wallabago/internal/engines"
-	"github.com/andriihomiak/wallabago/internal/storage"
 	"github.com/pkg/errors"
 )
 
+type BootstrapStorage interface {
+	GetBootstrapConditions(ctx context.Context, tx *sql.Tx) ([]core.Condition, error)
+
+	transactionStarter
+}
+
+type BootstrapEngine interface {
+	CreateWebClient(context.Context, *sql.Tx) error
+	CreateAdminAccount(context.Context, *sql.Tx) error
+}
+
 type BootstrapManager struct {
-	identity storage.IdentitySQLStorage
-	boostrap storage.BoostrapSQLStorage
-	engine   engines.BootstrapEngine
+	storage BootstrapStorage
+	engine  BootstrapEngine
 }
 
 func NewBootstrapManager(
-	boostrap storage.BoostrapSQLStorage,
-	engine engines.BootstrapEngine,
-	identity storage.IdentitySQLStorage,
+	storage BootstrapStorage,
+	engine BootstrapEngine,
 ) *BootstrapManager {
 	return &BootstrapManager{
-		boostrap: boostrap,
-		engine:   engine,
-		identity: identity,
+		storage: storage,
+		engine:  engine,
 	}
 }
 
-func (m *BootstrapManager) getBootstrapSteps() map[core.ConditionName]func(context.Context, engines.BootstrapContext) error {
-	return map[core.ConditionName]func(context.Context, engines.BootstrapContext) error{
+func (m *BootstrapManager) getBootstrapSteps() map[core.ConditionName]func(context.Context, *sql.Tx) error {
+	return map[core.ConditionName]func(context.Context, *sql.Tx) error{
 		core.ConditionAdminCreated:     m.engine.CreateAdminAccount,
 		core.ConditionWebClientCreated: m.engine.CreateWebClient,
 	}
@@ -39,21 +46,14 @@ func (m *BootstrapManager) getBootstrapSteps() map[core.ConditionName]func(conte
 func (m *BootstrapManager) Bootstrap(ctx context.Context) error {
 	// todo: consider db locks?
 	bootstrapSteps := m.getBootstrapSteps()
-	identityTx, err := m.identity.Begin(ctx)
+	tx, err := m.storage.Begin(ctx)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	defer func() {
-		storage.RollbackOnError(ctx, err, identityTx.Rollback)
+		rollbackOnError(ctx, err, tx.Rollback)
 	}()
-	appTx, err := m.boostrap.Begin(ctx)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	defer func() {
-		storage.RollbackOnError(ctx, err, appTx.Rollback)
-	}()
-	existingConditions, err := m.boostrap.GetBootstrapConditions(ctx, appTx)
+	existingConditions, err := m.storage.GetBootstrapConditions(ctx, tx)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -63,13 +63,11 @@ func (m *BootstrapManager) Bootstrap(ctx context.Context) error {
 		lookUp[cond.Name] = cond.Satisfied
 	}
 
-	bootstrapCtx := engines.NewBoostrapContext(appTx, identityTx)
-
 	for conditionName, step := range maps.All(bootstrapSteps) {
 		ok, satisfied := lookUp[conditionName]
 		if !ok || !satisfied {
 			slog.InfoContext(ctx, "Performing boostrap step", "conditionName", conditionName)
-			err := step(ctx, bootstrapCtx)
+			err := step(ctx, tx)
 			if err != nil {
 				return errors.WithStack(err)
 			}
@@ -78,12 +76,7 @@ func (m *BootstrapManager) Bootstrap(ctx context.Context) error {
 			slog.InfoContext(ctx, "Bootstrap condition already satisfied", "conditionName", conditionName)
 		}
 	}
-	err = appTx.Commit()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	err = identityTx.Commit()
+	err = tx.Commit()
 	if err != nil {
 		return errors.WithStack(err)
 	}

@@ -1,4 +1,4 @@
-package storage
+package managers
 
 import (
 	"context"
@@ -8,11 +8,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-type TransactionStarter interface {
+type transactionStarter interface {
 	Begin(ctx context.Context) (*sql.Tx, error)
 }
 
-func RollbackOnError(ctx context.Context, err error, rollbackFn func() error) {
+func rollbackOnError(ctx context.Context, err error, rollbackFn func() error) {
 	if err != nil {
 		slog.WarnContext(ctx, "Rolling back transaction", "cause", err.Error())
 		rollbackErr := rollbackFn()

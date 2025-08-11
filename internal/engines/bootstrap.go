@@ -5,50 +5,32 @@ import (
 	"database/sql"
 
 	"github.com/andriihomiak/wallabago/internal/core"
-	"github.com/andriihomiak/wallabago/internal/storage"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 )
 
-type BootstrapContext struct {
-	appTx      *sql.Tx
-	identityTx *sql.Tx
+type BootstrapStorage interface {
+	AddClient(ctx context.Context, tx *sql.Tx, client core.Client) error
+	AddUserInfo(ctx context.Context, tx *sql.Tx, user core.UserInfo) error
+	AddUser(ctx context.Context, tx *sql.Tx, user core.User) error
+	GetBootstrapConditions(ctx context.Context, tx *sql.Tx) ([]core.Condition, error)
+	MarkBootstrapConditionSatisfied(ctx context.Context, tx *sql.Tx, condition core.ConditionName) error
 }
 
-func NewBoostrapContext(appTx, identityTx *sql.Tx) BootstrapContext {
-	return BootstrapContext{
-		appTx:      appTx,
-		identityTx: identityTx,
-	}
-}
-
-type BootstrapEngine interface {
-	CreateAdminAccount(context.Context, BootstrapContext) error
-	CreateWebClient(context.Context, BootstrapContext) error
-}
-
-type bootstrapEngine struct {
-	identity storage.IdentitySQLStorage
-	boostrap storage.BoostrapSQLStorage
-	users    storage.UserStorage
+type BootstrapEngine struct {
+	storage BootstrapStorage
 }
 
 func NewBoostrapEngine(
-	identity storage.IdentitySQLStorage,
-	boostrap storage.BoostrapSQLStorage,
-	users storage.UserStorage,
-) BootstrapEngine {
-	return &bootstrapEngine{
-		identity: identity,
-		boostrap: boostrap,
-		users:    users,
+	storage BootstrapStorage,
+) *BootstrapEngine {
+	return &BootstrapEngine{
+		storage: storage,
 	}
 }
 
-var _ BootstrapEngine = (*bootstrapEngine)(nil)
-
-func (e *bootstrapEngine) CreateAdminAccount(ctx context.Context, bootstrapCtx BootstrapContext) error {
+func (e *BootstrapEngine) CreateAdminAccount(ctx context.Context, tx *sql.Tx) error {
 	// TODO: get admin username and password from config?
 	adminUsername := "admin"
 	adminEmail := "admin@admin"
@@ -67,12 +49,12 @@ func (e *bootstrapEngine) CreateAdminAccount(ctx context.Context, bootstrapCtx B
 		PasswordHash: passwordHash,
 	}
 
-	err = e.identity.AddUserInfo(ctx, bootstrapCtx.identityTx, adminUser)
+	err = e.storage.AddUserInfo(ctx, tx, adminUser)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	err = e.users.AddUser(ctx, bootstrapCtx.appTx, core.User{
+	err = e.storage.AddUser(ctx, tx, core.User{
 		ID:       adminUser.ID,
 		IsAdmin:  true,
 		Username: adminUser.Username,
@@ -81,7 +63,7 @@ func (e *bootstrapEngine) CreateAdminAccount(ctx context.Context, bootstrapCtx B
 		return errors.WithStack(err)
 	}
 
-	err = e.boostrap.MarkBootstrapConditionSatisfied(ctx, bootstrapCtx.appTx, core.ConditionAdminCreated)
+	err = e.storage.MarkBootstrapConditionSatisfied(ctx, tx, core.ConditionAdminCreated)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -89,16 +71,16 @@ func (e *bootstrapEngine) CreateAdminAccount(ctx context.Context, bootstrapCtx B
 	return nil
 }
 
-func (e *bootstrapEngine) CreateWebClient(ctx context.Context, bootstrapCtx BootstrapContext) error {
+func (e *BootstrapEngine) CreateWebClient(ctx context.Context, tx *sql.Tx) error {
 	client := core.Client{
 		ID:     "web",
 		Secret: "web",
 	}
-	err := e.identity.AddClient(ctx, bootstrapCtx.identityTx, client)
+	err := e.storage.AddClient(ctx, tx, client)
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	err = e.boostrap.MarkBootstrapConditionSatisfied(ctx, bootstrapCtx.appTx, core.ConditionWebClientCreated)
+	err = e.storage.MarkBootstrapConditionSatisfied(ctx, tx, core.ConditionWebClientCreated)
 	if err != nil {
 		return errors.WithStack(err)
 	}
