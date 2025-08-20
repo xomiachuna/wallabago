@@ -37,3 +37,6 @@ tools/
 
 # Exclude all .git content by default
 .git/*
+
+__debug_*
+debug.*

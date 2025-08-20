@@ -2,10 +2,10 @@
 default: check
 
 .PHONY: check 
-check: check-quick
+check: check-quick test
 
 .PHONY: check-quick
-check-quick: adr format lint diagrams test tidy
+check-quick: adr format lint diagrams tidy
 
 .PHONY: adr
 adr: generate-adr-toc generate-adr-graph 

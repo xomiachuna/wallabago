@@ -20,7 +20,7 @@ type Server struct {
 	app app.Wallabago
 }
 
-func NewServer(cfg app.Config) (*Server, error) {
+func NewServer(ctx context.Context, cfg app.Config) (*Server, error) {
 	wallabago, err := app.NewWallabago(context.Background(), &cfg)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -30,10 +30,10 @@ func NewServer(cfg app.Config) (*Server, error) {
 	}, nil
 }
 
-func (s *Server) Start() error {
+func (s *Server) Start(ctx context.Context) error {
 	// listen for interrupt signal
 	rootCtx, stopListeningForInterrupt := signal.NotifyContext(
-		context.Background(),
+		ctx,
 		os.Interrupt,
 		syscall.SIGTERM,
 		syscall.SIGSTOP,

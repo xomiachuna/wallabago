@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -18,6 +19,7 @@ func main() {
 	_, instrument := os.LookupEnv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
 	dbConnString := os.Getenv("DB")
 	server, err := http.NewServer(
+		context.TODO(),
 		app.Config{
 			Addr:                   addr,
 			InstrumentationEnabled: instrument,
@@ -27,6 +29,6 @@ func main() {
 	if err != nil {
 		slog.Error("failed to create server", "cause", err)
 	}
-	slog.Error("Server stopped", "errorsDuringShutdown", server.Start())
+	slog.Error("Server stopped", "errorsDuringShutdown", server.Start(context.Background()))
 	os.Exit(1)
 }
