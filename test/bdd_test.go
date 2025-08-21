@@ -5,73 +5,22 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"sync"
 	"testing"
+	"time"
+
+	nethttp "net/http"
 
 	"github.com/andriihomiak/wallabago/internal/app"
 	"github.com/andriihomiak/wallabago/internal/http"
 	"github.com/cucumber/godog"
-	"github.com/testcontainers/testcontainers-go/modules/postgres"
+	"github.com/pkg/errors"
+	"github.com/testcontainers/testcontainers-go/modules/compose"
+	"github.com/testcontainers/testcontainers-go/wait"
 )
-
-type (
-	clientIDKey     struct{}
-	clientSecretKey struct{}
-	usernameKey     struct{}
-	passwordKey     struct{}
-
-	identityManagerKey struct{}
-)
-
-type errNotImplemented struct{}
-
-func (e errNotImplemented) Error() string {
-	return "not implemented"
-}
-
-func theFollowingUsersExist(ctx context.Context, data *godog.Table) (context.Context, error) {
-	return ctx, errNotImplemented{}
-}
-
-func theFollowingClientsExist(ctx context.Context, data *godog.Table) (context.Context, error) {
-	return ctx, errNotImplemented{}
-}
-
-func setClientId(ctx context.Context, id string) (context.Context, error) {
-	return ctx, errNotImplemented{}
-}
-
-func setClientSecret(ctx context.Context, id string) (context.Context, error) {
-	return ctx, errNotImplemented{}
-}
-
-func setUsername(ctx context.Context, id string) (context.Context, error) {
-	return ctx, errNotImplemented{}
-}
-
-func setPassword(ctx context.Context, id string) (context.Context, error) {
-	return ctx, errNotImplemented{}
-}
-
-func tokenIsRequestedWithClientCredentialsFlow(ctx context.Context) (context.Context, error) {
-	return ctx, errNotImplemented{}
-}
-
-func refreshTokenShouldBeReturned(ctx context.Context) (context.Context, error) {
-	return ctx, errNotImplemented{}
-}
-
-func noErrorShouldBeReturned(ctx context.Context) (context.Context, error) {
-	return ctx, errNotImplemented{}
-}
 
 type testInfra struct {
-	pg            *postgres.PostgresContainer
-	server        *http.Server
 	cancelContext context.CancelFunc
-
-	teminationMu sync.Mutex
-	terminated   bool
+	stack         *compose.DockerCompose
 }
 
 func newTestInfra() *testInfra {
@@ -80,115 +29,103 @@ func newTestInfra() *testInfra {
 
 func (ti *testInfra) setup(ctx context.Context, cancelContext context.CancelFunc) error {
 	ti.cancelContext = cancelContext
-	slog.Info("Starting postgres in a testcontainer")
-	pgContainer, err := postgres.Run(ctx,
-		"postgres:17",
-		postgres.WithDatabase("bdd-test-database"),
-		postgres.WithUsername("bdd-test-username"),
-		postgres.WithPassword("bdd-test-password"),
-		postgres.BasicWaitStrategies(),
+	// run compose
+	stack, err := compose.NewDockerComposeWith(
+		compose.WithStackFiles("../deployments/docker-compose/docker-compose.yaml"),
 	)
 	if err != nil {
 		return err
 	}
-	ti.pg = pgContainer
-	connString, err := pgContainer.ConnectionString(ctx, "sslmode=disable", "application_name=bdd_test")
+	ti.stack = stack
+	err = stack.WaitForService("migrations", wait.ForExit()).Up(ctx, compose.RunServices("postgres", "migrations"))
 	if err != nil {
 		return err
 	}
-	slog.Info("Postgres started", "conn", connString)
 
-	slog.Info("Running migrations")
-	err = fmt.Errorf("migrations not implemented")
-	return err
+	addr := "0.0.0.0:29999"
 
 	server, err := http.NewServer(context.Background(), app.Config{
-		Addr:                   ":29999",
+		Addr:                   addr,
 		InstrumentationEnabled: false,
-		DBConnectionString:     connString,
+		DBConnectionString:     "postgresql://wallabago-api:wallabago@localhost:25432/wallabago-db?sslmode=disable&application_name=wallabago-api-client",
 	})
 	if err != nil {
 		return err
 	}
-	ti.server = server
 	go func() {
 		server.Start(ctx)
 	}()
-	// todo - check for readiness?
-	return nil
+
+	startupCtx, cancelFunc := context.WithTimeout(ctx, time.Millisecond*15000)
+	defer cancelFunc()
+
+	ready := make(chan struct{})
+	go func() {
+		client := nethttp.Client{}
+		// get index
+		url := fmt.Sprintf("http://%s/", addr)
+		for {
+			resp, err := client.Get(url)
+			if err != nil {
+				slog.Debug("Error while checking server health", "err", err)
+				time.Sleep(time.Millisecond * 1000)
+				continue
+			}
+			defer resp.Body.Close()
+			slog.Debug("Server is online")
+			break
+		}
+		ready <- struct{}{}
+	}()
+	select {
+	case <-ready:
+		return nil
+	case <-startupCtx.Done():
+		return errors.Wrap(startupCtx.Err(), "readiness probe failed")
+	}
 }
 
 func (ti *testInfra) teardown(cause error) error {
-	ti.teminationMu.Lock()
-	defer ti.teminationMu.Unlock()
-	if ti.terminated {
-		return nil
-	}
 	slog.Info("Tearing down test infra", "cause", cause)
 
-	if ti.cancelContext != nil {
-		slog.Info("Cancelling context")
-		ti.cancelContext()
-		slog.Info("Context cancelled")
-	} else {
-		slog.Warn("Unable to cancel context - no cancellation func available")
-	}
+	slog.Info("Cancelling context")
+	ti.cancelContext()
+	slog.Info("Context cancelled")
 
-	if ti.pg != nil {
-		err := ti.pg.Terminate(context.TODO())
-		if err != nil {
-			slog.Error("Failed to teminate pg container", "err", err)
-			return err
-		}
-		slog.Info("pg container terminated")
-	} else {
-		slog.Warn("Unable to ternminate pg: nothing to terminate")
-	}
-	ti.terminated = true
-	return nil
-}
+	err := ti.stack.Down(context.TODO())
 
-func initSuite(tsc *godog.TestSuiteContext) {
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	infra := newTestInfra()
-	tsc.BeforeSuite(func() {
-		err := infra.setup(ctx, cancelFunc)
-		if err != nil {
-			infra.teardown(err)
-		}
-	})
-	tsc.AfterSuite(func() { infra.teardown(nil) })
+	slog.Info("Infra tear down finished")
+	return err
 }
 
 func initScenarios(ctx *godog.ScenarioContext) {
 	// background
-	ctx.Step(`^the following clients exist:$`, theFollowingClientsExist)
-	ctx.Step(`^the following users exist:$`, theFollowingUsersExist)
 	// given
-	ctx.Step(`^client id is "([^"]*)"$`, setClientId)
-	ctx.Step(`^client secret is "([^"]*)"$`, setClientSecret)
-	ctx.Step(`^password "([^"]*)"$`, setPassword)
-	ctx.Step(`^username is "([^"]*)"$`, setUsername)
 	// events
-	ctx.Step(`^token is requested with client credentials flow$`, tokenIsRequestedWithClientCredentialsFlow)
 	// assertions
-
-	ctx.Step(`^no error should be returned$`, noErrorShouldBeReturned)
-	ctx.Step(`^refresh token should be returned$`, refreshTokenShouldBeReturned)
 }
 
-func TestScenarios(t *testing.T) {
+func TestBDDScenarios(t *testing.T) {
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	defer cancelFunc()
+	infra := newTestInfra()
+	err := infra.setup(ctx, cancelFunc)
+	if err != nil {
+		infra.teardown(err)
+	}
+	defer infra.teardown(nil)
 	suite := godog.TestSuite{
-		TestSuiteInitializer: initSuite,
-		ScenarioInitializer:  initScenarios,
+		ScenarioInitializer: initScenarios,
 		Options: &godog.Options{
 			Format:   "pretty",
 			Paths:    []string{"../features"},
 			TestingT: t,
 			Output:   os.Stderr,
+			Strict:   true,
 		},
 	}
 	if suite.Run() != 0 {
 		t.Fatal("failed to run feature tests")
 	}
+	t.Log("BDD suite finished")
 }

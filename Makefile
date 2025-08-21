@@ -43,7 +43,7 @@ format:
 
 .PHONY: test
 test:
-	@go test ./...
+	@go test -v ./...
 
 .PHONY: tidy
 tidy:
