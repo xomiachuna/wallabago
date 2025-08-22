@@ -20,8 +20,8 @@ func RespondJSON(w http.ResponseWriter, r *http.Request, body any, status int) {
 		return
 	}
 	w.Header().Set(constants.HeaderContentType, constants.MimeApplicationJSON)
-	//nolint:errcheck //todo
 	w.WriteHeader(status)
+	//nolint:errcheck //todo
 	w.Write(bodyContent)
 }
 
