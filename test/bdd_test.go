@@ -21,6 +21,7 @@ import (
 type testInfra struct {
 	cancelContext context.CancelFunc
 	stack         *compose.DockerCompose
+	server        *http.Server
 }
 
 func newTestInfra() *testInfra {
@@ -48,10 +49,18 @@ func (ti *testInfra) setup(ctx context.Context, cancelContext context.CancelFunc
 		Addr:                   addr,
 		InstrumentationEnabled: false,
 		DBConnectionString:     "postgresql://wallabago-api:wallabago@localhost:25432/wallabago-db?sslmode=disable&application_name=wallabago-api-client",
+		BootstrapClientID:      "web",
+		BootstrapClientSecret:  "web",
+		BootstrapAdminPassword: "admin",
+		BootstrapAdminUsername: "admin",
+		BootstrapAdminEmail:    "admin@admin.co",
 	})
 	if err != nil {
 		return err
 	}
+
+	ti.server = server
+
 	go func() {
 		server.Start(ctx)
 	}()
@@ -98,30 +107,51 @@ func (ti *testInfra) teardown(cause error) error {
 	return err
 }
 
-func initScenarios(ctx *godog.ScenarioContext) {
-	// background
-	// given
-	// events
-	// assertions
+type serverAddrKey struct{}
+
+type bootstrapCredentialsKey struct{}
+
+type userCredentials struct {
+	username, password string
+}
+
+type bootstrapClientKey struct{}
+
+type clientCredentials struct {
+	id     string
+	secret string
 }
 
 func TestBDDScenarios(t *testing.T) {
-	ctx, cancelFunc := context.WithCancel(context.Background())
+	infraCtx, cancelFunc := context.WithCancel(context.Background())
 	defer cancelFunc()
 	infra := newTestInfra()
-	err := infra.setup(ctx, cancelFunc)
+	err := infra.setup(infraCtx, cancelFunc)
 	if err != nil {
 		infra.teardown(err)
 	}
 	defer infra.teardown(nil)
+
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, serverAddrKey{}, infra.server.App().Addr())
+	ctx = context.WithValue(ctx, bootstrapCredentialsKey{}, userCredentials{
+		username: infra.server.App().Config().BootstrapAdminUsername,
+		password: infra.server.App().Config().BootstrapAdminPassword,
+	})
+	ctx = context.WithValue(ctx, bootstrapClientKey{}, clientCredentials{
+		id:     infra.server.App().Config().BootstrapClientID,
+		secret: infra.server.App().Config().BootstrapClientSecret,
+	})
+
 	suite := godog.TestSuite{
-		ScenarioInitializer: initScenarios,
+		ScenarioInitializer: func(sc *godog.ScenarioContext) { InitializeScenario(sc, infra) },
 		Options: &godog.Options{
-			Format:   "pretty",
-			Paths:    []string{"../features"},
-			TestingT: t,
-			Output:   os.Stderr,
-			Strict:   true,
+			Format:         "pretty",
+			Paths:          []string{"../features"},
+			TestingT:       t,
+			Output:         os.Stderr,
+			Strict:         true,
+			DefaultContext: ctx,
 		},
 	}
 	if suite.Run() != 0 {

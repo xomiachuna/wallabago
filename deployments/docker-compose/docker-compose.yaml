@@ -71,10 +71,10 @@ services:
       # we use CMD-SHELL with sh in order to allow string interpolation
       test: ["CMD-SHELL", "sh -c 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}'"]
       start_interval: 1s
-      start_period: 5s
-      timeout: 5s
-      interval: 10s
-      retries: 10
+      start_period: 1s
+      timeout: 1s
+      interval: 1s
+      retries: 30
         
 networks:
   wallabago:

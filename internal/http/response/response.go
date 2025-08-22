@@ -19,20 +19,20 @@ func RespondJSON(w http.ResponseWriter, r *http.Request, body any, status int) {
 		RespondInternalErrorWithStack(w, r, err)
 		return
 	}
-	w.WriteHeader(status)
 	w.Header().Set(constants.HeaderContentType, constants.MimeApplicationJSON)
 	//nolint:errcheck //todo
+	w.WriteHeader(status)
 	w.Write(bodyContent)
 }
 
 func RespondInternalErrorWithStack(w http.ResponseWriter, _ *http.Request, err error) {
-	w.WriteHeader(http.StatusInternalServerError)
 	w.Header().Set(constants.HeaderContentType, constants.MimeTextPlain)
+	w.WriteHeader(http.StatusInternalServerError)
 	fmt.Fprint(w, errors.WithStack(err))
 }
 
 func RespondErrorPlain(w http.ResponseWriter, _ *http.Request, err error, status int) {
-	w.WriteHeader(status)
 	w.Header().Set(constants.HeaderContentType, constants.MimeTextPlain)
+	w.WriteHeader(status)
 	fmt.Fprint(w, err)
 }

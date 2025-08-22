@@ -11,3 +11,9 @@ type Condition struct {
 	Name      ConditionName
 	Satisfied bool
 }
+
+type BootstrapAdminCredentials struct {
+	Username string
+	Password string
+	Email    string
+}

@@ -17,29 +17,40 @@ type BootstrapStorage interface {
 }
 
 type BootstrapEngine interface {
-	CreateWebClient(context.Context, *sql.Tx) error
-	CreateAdminAccount(context.Context, *sql.Tx) error
+	CreateInitialClient(context.Context, *sql.Tx, core.Client) error
+	CreateAdminAccount(context.Context, *sql.Tx, core.BootstrapAdminCredentials) error
 }
 
 type BootstrapManager struct {
 	storage BootstrapStorage
 	engine  BootstrapEngine
+
+	bootstrapAdminCredentials core.BootstrapAdminCredentials
+	bootstrapClient           core.Client
 }
 
 func NewBootstrapManager(
 	storage BootstrapStorage,
 	engine BootstrapEngine,
+	bootstrapAdminCredentials core.BootstrapAdminCredentials,
+	bootstrapClient core.Client,
 ) *BootstrapManager {
 	return &BootstrapManager{
-		storage: storage,
-		engine:  engine,
+		storage:                   storage,
+		engine:                    engine,
+		bootstrapAdminCredentials: bootstrapAdminCredentials,
+		bootstrapClient:           bootstrapClient,
 	}
 }
 
 func (m *BootstrapManager) getBootstrapSteps() map[core.ConditionName]func(context.Context, *sql.Tx) error {
 	return map[core.ConditionName]func(context.Context, *sql.Tx) error{
-		core.ConditionAdminCreated:     m.engine.CreateAdminAccount,
-		core.ConditionWebClientCreated: m.engine.CreateWebClient,
+		core.ConditionAdminCreated: func(ctx context.Context, tx *sql.Tx) error {
+			return m.engine.CreateAdminAccount(ctx, tx, m.bootstrapAdminCredentials)
+		},
+		core.ConditionWebClientCreated: func(ctx context.Context, tx *sql.Tx) error {
+			return m.engine.CreateInitialClient(ctx, tx, m.bootstrapClient)
+		},
 	}
 }
 

@@ -20,6 +20,10 @@ type Server struct {
 	app app.Wallabago
 }
 
+func (s *Server) App() *app.Wallabago {
+	return &s.app
+}
+
 func NewServer(ctx context.Context, cfg app.Config) (*Server, error) {
 	wallabago, err := app.NewWallabago(context.Background(), &cfg)
 	if err != nil {

@@ -8,6 +8,7 @@ import (
 
 	stderrors "errors"
 
+	"github.com/andriihomiak/wallabago/internal/core"
 	"github.com/andriihomiak/wallabago/internal/database"
 	"github.com/andriihomiak/wallabago/internal/engines"
 	"github.com/andriihomiak/wallabago/internal/http/handlers"
@@ -23,6 +24,9 @@ type Config struct {
 	Addr                   string
 	InstrumentationEnabled bool
 	DBConnectionString     string
+
+	BootstrapAdminEmail, BootstrapAdminUsername, BootstrapAdminPassword string
+	BootstrapClientID, BootstrapClientSecret                            string
 }
 
 type Wallabago struct {
@@ -37,6 +41,10 @@ func (w *Wallabago) Addr() string {
 	return w.config.Addr
 }
 
+func (w *Wallabago) Config() *Config {
+	return w.config
+}
+
 func NewWallabago(ctx context.Context, config *Config) (*Wallabago, error) {
 	// database
 	dbPool, err := database.NewDBPool(ctx, config.DBConnectionString)
@@ -47,7 +55,14 @@ func NewWallabago(ctx context.Context, config *Config) (*Wallabago, error) {
 	// engines
 	bootstrapEngine := engines.NewBoostrapEngine(postgresStorage)
 	// managers
-	boostrapManager := managers.NewBootstrapManager(postgresStorage, bootstrapEngine)
+	boostrapManager := managers.NewBootstrapManager(postgresStorage, bootstrapEngine, core.BootstrapAdminCredentials{
+		Username: config.BootstrapAdminUsername,
+		Password: config.BootstrapAdminPassword,
+		Email:    config.BootstrapAdminEmail,
+	}, core.Client{
+		ID:     config.BootstrapClientID,
+		Secret: config.BootstrapClientSecret,
+	})
 	identityManager := managers.NewIdentityManager(postgresStorage)
 
 	return &Wallabago{

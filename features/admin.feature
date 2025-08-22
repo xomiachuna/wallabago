@@ -1,6 +1,7 @@
 Feature: Administration
     Background:
         Given there is an admin account bootstrapped
+        And there is a default client bootstrapped
 
     Scenario: I use bootstrapped admin credentials to authenticate
         Given bootstrap account credentials are valid
@@ -12,7 +13,7 @@ Feature: Administration
         Scenario Outline: I create another account as an admin
             Given I am authenticated as admin
             When I create a new <type> account
-            Then the <type> account exists
+            Then <type> account exists
 
             Examples:
                 |type   |
@@ -23,7 +24,7 @@ Feature: Administration
             Given I am authenticated as admin
             And there exists another <type> account
             When I delete that account
-            Then the <type> account no longer exists
+            Then <type> account no longer exists
 
             Examples:
                 |type   |

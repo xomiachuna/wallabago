@@ -30,13 +30,9 @@ func NewBoostrapEngine(
 	}
 }
 
-func (e *BootstrapEngine) CreateAdminAccount(ctx context.Context, tx *sql.Tx) error {
+func (e *BootstrapEngine) CreateAdminAccount(ctx context.Context, tx *sql.Tx, admin core.BootstrapAdminCredentials) error {
 	// TODO: get admin username and password from config?
-	adminUsername := "admin"
-	adminEmail := "admin@admin"
-	adminPassword := "admin"
-
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte(adminPassword), bcrypt.DefaultCost)
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(admin.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -44,8 +40,8 @@ func (e *BootstrapEngine) CreateAdminAccount(ctx context.Context, tx *sql.Tx) er
 	// create an identity with said username and password
 	adminUser := core.UserInfo{
 		ID:           uuid.New().String(),
-		Email:        adminEmail,
-		Username:     adminUsername,
+		Email:        admin.Email,
+		Username:     admin.Username,
 		PasswordHash: passwordHash,
 	}
 
@@ -71,11 +67,7 @@ func (e *BootstrapEngine) CreateAdminAccount(ctx context.Context, tx *sql.Tx) er
 	return nil
 }
 
-func (e *BootstrapEngine) CreateWebClient(ctx context.Context, tx *sql.Tx) error {
-	client := core.Client{
-		ID:     "web",
-		Secret: "web",
-	}
+func (e *BootstrapEngine) CreateInitialClient(ctx context.Context, tx *sql.Tx, client core.Client) error {
 	err := e.storage.AddClient(ctx, tx, client)
 	if err != nil {
 		return errors.WithStack(err)
