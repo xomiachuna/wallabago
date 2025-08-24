@@ -2,11 +2,13 @@ package bdd_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
+	"os"
 
 	"github.com/cucumber/godog"
 )
@@ -26,72 +28,27 @@ func givenBootstrapAccountCredentialsAreValid() error {
 	return nil
 }
 
-func givenIAmAuthenticatedAsAdmin() error {
-	return godog.ErrPending
+type tokenResponseKey struct {}
+
+type tokenResponse struct {
+    AccessToken string `json:"access_token"`
+    ExpiresIn int `json:"expires_in"`
+    RefreshToken string `json:"refresh_token"`
+    Scope string `json:"scope"`
+    TokenType string `json:"token_type"`
 }
 
-func thenIAmPreventedFromDeletingTheAccount() error {
-	return godog.ErrPending
-}
-
-func thenIAmSuccessfullyAuthenticatedAsAdmin(ctx context.Context) (context.Context, error) {
-	response, ok := ctx.Value(authenticationKey{}).(authenticationResponse)
-	if !ok {
-		return ctx, fmt.Errorf("failed to extract auth response from context")
-	}
-	if response.statusCode != http.StatusOK {
-		return ctx, fmt.Errorf("received non-200 status code: %d", response.statusCode)
-	}
-	return ctx, nil
-}
-
-func whenICreateANewAccount() error {
-	return godog.ErrPending
-}
-
-func whenITryToDeleteAccount(which string) error {
-	return godog.ErrPending
-}
-
-func makeRequestUrl(ctx context.Context, path string) (string, error) {
-	addr, ok := ctx.Value(serverAddrKey{}).(string)
-	if !ok {
-		return "", fmt.Errorf("failed to extract server address from context")
-	}
-	return fmt.Sprintf("http://%s%s", addr, path), nil
-}
-
-type (
-	authenticationKey      struct{}
-	authenticationResponse struct {
-		statusCode int
-		body       []byte
-	}
-)
-
-func whenIUseBootstrapCredentialsToAuthenticate(ctx context.Context) (context.Context, error) {
+func authenthicateWithCredentialsViaClientCredentialsFlow(ctx context.Context, userCreds userCredentials, clientCreds clientCredentials) (context.Context, error) {
 	tokenEndpoint, err := makeRequestUrl(ctx, "/oauth/v2/token")
 	if err != nil {
 		return ctx, err
 	}
-
-	bootstrapCreds, ok := ctx.Value(bootstrapCredentialsKey{}).(userCredentials)
-	if !ok {
-		return ctx, fmt.Errorf("failed to extract bootstrap credentials")
-	}
-
-	bootstrapClient, ok := ctx.Value(bootstrapClientKey{}).(clientCredentials)
-	if !ok {
-		return ctx, fmt.Errorf("failed to extract bootstrap client")
-	}
-
 	client := http.Client{}
-
 	resp, err := client.PostForm(tokenEndpoint, url.Values{
-		"username":      []string{bootstrapCreds.username},
-		"password":      []string{bootstrapCreds.password},
-		"client_id":     []string{bootstrapClient.id},
-		"client_secret": []string{bootstrapClient.secret},
+		"username":      []string{userCreds.username},
+		"password":      []string{userCreds.password},
+		"client_id":     []string{clientCreds.id},
+		"client_secret": []string{clientCreds.secret},
 		"grant_type":    []string{"password"},
 	})
 	if err != nil {
@@ -102,19 +59,81 @@ func whenIUseBootstrapCredentialsToAuthenticate(ctx context.Context) (context.Co
 	if err != nil {
 		return ctx, err
 	}
-	slog.DebugContext(ctx, "Received response", "statusCode", resp.StatusCode, "body", string(body), "headers", resp.Header)
-	return context.WithValue(ctx, authenticationKey{}, authenticationResponse{
-		statusCode: resp.StatusCode,
-		body:       body,
-	}), nil
+	logger.DebugContext(ctx, "Received response", "statusCode", resp.StatusCode, "body", string(body), "headers", resp.Header)
+    response := tokenResponse{}
+    err = json.Unmarshal(body, &response)
+	if err != nil {
+		return ctx, err
+	}
+    return context.WithValue(ctx, tokenResponseKey{}, response), nil
+}
+
+func givenIAmAuthenticatedAsAdmin(ctx context.Context) (context.Context, error) {
+	bootstrapCreds, ok := ctx.Value(bootstrapCredentialsKey{}).(userCredentials)
+	if !ok {
+		return ctx, fmt.Errorf("failed to extract bootstrap credentials")
+	}
+
+	bootstrapClient, ok := ctx.Value(bootstrapClientKey{}).(clientCredentials)
+	if !ok {
+		return ctx, fmt.Errorf("failed to extract bootstrap client")
+	}
+    return authenthicateWithCredentialsViaClientCredentialsFlow(ctx, bootstrapCreds, bootstrapClient)
+}
+
+func thenIAmPreventedFromDeletingTheAccount() error {
+	return godog.ErrUndefined
+}
+
+func thenIAmSuccessfullyAuthenticatedAsAdmin(ctx context.Context) (context.Context, error) {
+	_, ok := ctx.Value(tokenResponseKey{}).(tokenResponse)
+	if !ok {
+		return ctx, fmt.Errorf("unable to obtain token response")
+	}
+	return ctx, nil
+}
+
+func whenICreateANewAccount() error {
+	return godog.ErrUndefined
+}
+
+func whenITryToDeleteAccount(which string) error {
+	return godog.ErrUndefined
+}
+
+func makeRequestUrl(ctx context.Context, path string) (string, error) {
+	addr, ok := ctx.Value(serverAddrKey{}).(string)
+	if !ok {
+		return "", fmt.Errorf("failed to extract server address from context")
+	}
+	return fmt.Sprintf("http://%s%s", addr, path), nil
+}
+
+func whenIUseBootstrapCredentialsToAuthenticate(ctx context.Context) (context.Context, error) {
+	bootstrapCreds, ok := ctx.Value(bootstrapCredentialsKey{}).(userCredentials)
+	if !ok {
+		return ctx, fmt.Errorf("failed to extract bootstrap credentials")
+	}
+
+	bootstrapClient, ok := ctx.Value(bootstrapClientKey{}).(clientCredentials)
+	if !ok {
+		return ctx, fmt.Errorf("failed to extract bootstrap client")
+	}
+    return authenthicateWithCredentialsViaClientCredentialsFlow(ctx, bootstrapCreds, bootstrapClient)
 }
 
 func givenAnotherAccountExists() error {
-	return godog.ErrPending
+	return godog.ErrUndefined
 }
 
 func thenAccountExistenceIsAsExpected() error {
-	return godog.ErrPending
+	return godog.ErrUndefined
+}
+
+var logger *slog.Logger
+
+func init(){
+    logger = slog.New(slog.NewTextHandler(os.Stderr, nil))
 }
 
 func InitializeScenario(ctx *godog.ScenarioContext, infra *testInfra) {

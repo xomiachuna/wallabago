@@ -143,6 +143,7 @@ func TestBDDScenarios(t *testing.T) {
 		secret: infra.server.App().Config().BootstrapClientSecret,
 	})
 
+
 	suite := godog.TestSuite{
 		ScenarioInitializer: func(sc *godog.ScenarioContext) { InitializeScenario(sc, infra) },
 		Options: &godog.Options{
@@ -152,6 +153,8 @@ func TestBDDScenarios(t *testing.T) {
 			Output:         os.Stderr,
 			Strict:         true,
 			DefaultContext: ctx,
+            StopOnFailure: true,
+            Concurrency: 1,
 		},
 	}
 	if suite.Run() != 0 {
