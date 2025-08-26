@@ -25,7 +25,7 @@ func (s *Server) App() *app.Wallabago {
 }
 
 func NewServer(ctx context.Context, cfg app.Config) (*Server, error) {
-	wallabago, err := app.NewWallabago(context.Background(), &cfg)
+	wallabago, err := app.NewWallabago(ctx, &cfg)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -74,6 +74,7 @@ func (s *Server) Start(ctx context.Context) error {
 
 		slog.Warn("Server start failed", "cause", err)
 		shutdownCtx := context.TODO()
+		//nolint:contextcheck // we use a separate context here to allow for shutdown timeouts
 		appShutdownErr := s.app.Shutdown(shutdownCtx)
 		return stderrors.Join(err, appShutdownErr)
 
@@ -87,7 +88,9 @@ func (s *Server) Start(ctx context.Context) error {
 		// cant reuse the root context here as it is honored by shutdown and
 		// communicates the timeout for graceful shutdown
 		shutdownCtx := context.TODO()
+		//nolint:contextcheck // we use a separate context here to allow for shutdown timeouts
 		serverShutdownErr := server.Shutdown(shutdownCtx)
+		//nolint:contextcheck // we use a separate context here to allow for shutdown timeouts
 		appShutdownErr := s.app.Shutdown(shutdownCtx)
 		return stderrors.Join(err, appShutdownErr, serverShutdownErr)
 	}

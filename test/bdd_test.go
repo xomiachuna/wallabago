@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	stderrors "errors"
 	nethttp "net/http"
 
 	"github.com/andriihomiak/wallabago/internal/app"
@@ -45,7 +46,7 @@ func (ti *testInfra) setup(ctx context.Context, cancelContext context.CancelFunc
 
 	addr := "0.0.0.0:29999"
 
-	server, err := http.NewServer(context.Background(), app.Config{
+	server, err := http.NewServer(ctx, app.Config{
 		Addr:                   addr,
 		InstrumentationEnabled: false,
 		DBConnectionString:     "postgresql://wallabago-api:wallabago@localhost:25432/wallabago-db?sslmode=disable&application_name=wallabago-api-client",
@@ -62,25 +63,32 @@ func (ti *testInfra) setup(ctx context.Context, cancelContext context.CancelFunc
 	ti.server = server
 
 	go func() {
-		server.Start(ctx)
+		err := server.Start(ctx)
+		if err != nil {
+			slog.Warn("Server exited", "cause", err.Error())
+		}
 	}()
 
 	startupCtx, cancelFunc := context.WithTimeout(ctx, time.Millisecond*15000)
 	defer cancelFunc()
 
 	ready := make(chan struct{})
+	client := nethttp.Client{}
+	url := fmt.Sprintf("http://%s/", addr)
+	req, err := nethttp.NewRequestWithContext(ctx, nethttp.MethodGet, url, nethttp.NoBody)
+	if err != nil {
+		return errors.WithStack(err)
+	}
 	go func() {
-		client := nethttp.Client{}
 		// get index
-		url := fmt.Sprintf("http://%s/", addr)
 		for {
-			resp, err := client.Get(url)
+			resp, err := client.Do(req)
 			if err != nil {
 				slog.Debug("Error while checking server health", "err", err)
 				time.Sleep(time.Millisecond * 1000)
 				continue
 			}
-			defer resp.Body.Close()
+			resp.Body.Close()
 			slog.Debug("Server is online")
 			break
 		}
@@ -128,9 +136,15 @@ func TestBDDScenarios(t *testing.T) {
 	infra := newTestInfra()
 	err := infra.setup(infraCtx, cancelFunc)
 	if err != nil {
-		infra.teardown(err)
+		teardownErr := infra.teardown(err)
+		t.Fatal(stderrors.Join(err, teardownErr))
 	}
-	defer infra.teardown(nil)
+	defer func() {
+		err := infra.teardown(nil)
+		if err != nil {
+			slog.Warn("Infra teardown error", "err", err)
+		}
+	}()
 
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, serverAddrKey{}, infra.server.App().Addr())
@@ -143,9 +157,8 @@ func TestBDDScenarios(t *testing.T) {
 		secret: infra.server.App().Config().BootstrapClientSecret,
 	})
 
-
 	suite := godog.TestSuite{
-		ScenarioInitializer: func(sc *godog.ScenarioContext) { InitializeScenario(sc, infra) },
+		ScenarioInitializer: func(sc *godog.ScenarioContext) { InitializeScenario(sc) },
 		Options: &godog.Options{
 			Format:         "pretty",
 			Paths:          []string{"../features"},
@@ -153,8 +166,8 @@ func TestBDDScenarios(t *testing.T) {
 			Output:         os.Stderr,
 			Strict:         true,
 			DefaultContext: ctx,
-            StopOnFailure: true,
-            Concurrency: 1,
+			StopOnFailure:  true,
+			Concurrency:    1,
 		},
 	}
 	if suite.Run() != 0 {

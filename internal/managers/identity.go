@@ -69,7 +69,7 @@ func (m *IdentityManager) PasswordFlow(ctx context.Context, req core.PasswordFlo
 	if client.Secret != req.ClientSecret {
 		return nil, &core.AuthError{
 			ErrorName:        core.AuthErrorInvalidClient,
-			ErrorDescription: errors.WithStack(err).Error(),
+			ErrorDescription: "Bad client credentials",
 		}
 	}
 
@@ -88,7 +88,7 @@ func (m *IdentityManager) PasswordFlow(ctx context.Context, req core.PasswordFlo
 		// todo: check error type
 		return nil, &core.AuthError{
 			ErrorName:        core.AuthErrorInvalidGrant,
-			ErrorDescription: errors.WithStack(err).Error(),
+			ErrorDescription: errors.WithStack(passwordErr).Error(),
 		}
 	}
 
