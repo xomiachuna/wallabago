@@ -2,10 +2,10 @@
 default: check
 
 .PHONY: check 
-check: check-quick
+check: check-quick test
 
 .PHONY: check-quick
-check-quick: adr format lint diagrams test tidy
+check-quick: adr format lint diagrams tidy
 
 .PHONY: adr
 adr: generate-adr-toc generate-adr-graph 
@@ -30,7 +30,7 @@ lint: format
 		-e GOMODCACHE=/.cache/mod \
 		-e GOLANGCI_LINT_CACHE=/.cache/golangci-lint \
 		-v ~/.cache/golagci-lint-docker:/.cache \
-		golangci/golangci-lint:v2.2.2 golangci-lint run
+		golangci/golangci-lint:v2.2.2 golangci-lint run --color never
 
 .PHONY: format
 format:
@@ -39,11 +39,11 @@ format:
 		-e GOMODCACHE=/.cache/mod \
 		-e GOLANGCI_LINT_CACHE=/.cache/golangci-lint \
 		-v ~/.cache/golagci-lint-docker:/.cache \
-		golangci/golangci-lint:v2.2.2 golangci-lint fmt
+		golangci/golangci-lint:v2.2.2 golangci-lint fmt 
 
 .PHONY: test
 test:
-	@go test ./...
+	@go test -v ./...
 
 .PHONY: tidy
 tidy:

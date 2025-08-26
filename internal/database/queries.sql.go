@@ -7,16 +7,500 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"time"
 )
 
-const currentTimestamp = `-- name: CurrentTimestamp :one
-SELECT CURRENT_TIMESTAMP::timestamp
+const addAccessToken = `-- name: AddAccessToken :one
+INSERT INTO
+	identity.access_tokens (
+		token_id,
+		refresh_token_id,
+		client_id,
+		user_id,
+		jwt,
+		revoked,
+		expires_in_seconds,
+		issued_at,
+		scope,
+		type
+	)
+VALUES
+	($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING
+	token_id,
+	refresh_token_id,
+	client_id,
+	user_id,
+	jwt,
+	revoked,
+	expires_in_seconds,
+	issued_at,
+	scope,
+	type
 `
 
-func (q *Queries) CurrentTimestamp(ctx context.Context) (time.Time, error) {
-	row := q.queryRow(ctx, q.currentTimestampStmt, currentTimestamp)
-	var column_1 time.Time
-	err := row.Scan(&column_1)
-	return column_1, err
+type AddAccessTokenParams struct {
+	TokenID          string
+	RefreshTokenID   sql.NullString
+	ClientID         string
+	UserID           string
+	Jwt              string
+	Revoked          bool
+	ExpiresInSeconds int64
+	IssuedAt         time.Time
+	Scope            string
+	Type             string
+}
+
+type AddAccessTokenRow struct {
+	TokenID          string
+	RefreshTokenID   sql.NullString
+	ClientID         string
+	UserID           string
+	Jwt              string
+	Revoked          bool
+	ExpiresInSeconds int64
+	IssuedAt         time.Time
+	Scope            string
+	Type             string
+}
+
+func (q *Queries) AddAccessToken(ctx context.Context, arg AddAccessTokenParams) (*AddAccessTokenRow, error) {
+	row := q.queryRow(ctx, q.addAccessTokenStmt, addAccessToken,
+		arg.TokenID,
+		arg.RefreshTokenID,
+		arg.ClientID,
+		arg.UserID,
+		arg.Jwt,
+		arg.Revoked,
+		arg.ExpiresInSeconds,
+		arg.IssuedAt,
+		arg.Scope,
+		arg.Type,
+	)
+	var i AddAccessTokenRow
+	err := row.Scan(
+		&i.TokenID,
+		&i.RefreshTokenID,
+		&i.ClientID,
+		&i.UserID,
+		&i.Jwt,
+		&i.Revoked,
+		&i.ExpiresInSeconds,
+		&i.IssuedAt,
+		&i.Scope,
+		&i.Type,
+	)
+	return &i, err
+}
+
+const addAppUser = `-- name: AddAppUser :one
+INSERT INTO
+	wallabago.users (user_id, is_admin, username)
+VALUES
+	($1, $2, $3)
+RETURNING
+	user_id,
+	is_admin,
+	username
+`
+
+type AddAppUserParams struct {
+	UserID   string
+	IsAdmin  bool
+	Username string
+}
+
+func (q *Queries) AddAppUser(ctx context.Context, arg AddAppUserParams) (*WallabagoUser, error) {
+	row := q.queryRow(ctx, q.addAppUserStmt, addAppUser, arg.UserID, arg.IsAdmin, arg.Username)
+	var i WallabagoUser
+	err := row.Scan(&i.UserID, &i.IsAdmin, &i.Username)
+	return &i, err
+}
+
+const addClient = `-- name: AddClient :one
+INSERT INTO
+	identity.clients (client_id, client_secret)
+VALUES
+	($1, $2)
+RETURNING
+	client_id,
+	client_secret
+`
+
+type AddClientParams struct {
+	ClientID     string
+	ClientSecret string
+}
+
+func (q *Queries) AddClient(ctx context.Context, arg AddClientParams) (*IdentityClient, error) {
+	row := q.queryRow(ctx, q.addClientStmt, addClient, arg.ClientID, arg.ClientSecret)
+	var i IdentityClient
+	err := row.Scan(&i.ClientID, &i.ClientSecret)
+	return &i, err
+}
+
+const addIdentityUser = `-- name: AddIdentityUser :one
+INSERT INTO
+	identity.users (user_id, username, email, password_hash)
+VALUES
+	($1, $2, $3, $4)
+RETURNING
+	user_id,
+	username,
+	email,
+	password_hash
+`
+
+type AddIdentityUserParams struct {
+	UserID       string
+	Username     string
+	Email        string
+	PasswordHash []byte
+}
+
+func (q *Queries) AddIdentityUser(ctx context.Context, arg AddIdentityUserParams) (*IdentityUser, error) {
+	row := q.queryRow(ctx, q.addIdentityUserStmt, addIdentityUser,
+		arg.UserID,
+		arg.Username,
+		arg.Email,
+		arg.PasswordHash,
+	)
+	var i IdentityUser
+	err := row.Scan(
+		&i.UserID,
+		&i.Username,
+		&i.Email,
+		&i.PasswordHash,
+	)
+	return &i, err
+}
+
+const addRefreshToken = `-- name: AddRefreshToken :one
+INSERT INTO
+	identity.refresh_tokens (token_id, client_id, jwt, revoked)
+VALUES
+	($1, $2, $3, $4)
+RETURNING
+	token_id,
+	client_id,
+	jwt,
+	revoked
+`
+
+type AddRefreshTokenParams struct {
+	TokenID  string
+	ClientID string
+	Jwt      string
+	Revoked  bool
+}
+
+func (q *Queries) AddRefreshToken(ctx context.Context, arg AddRefreshTokenParams) (*IdentityRefreshToken, error) {
+	row := q.queryRow(ctx, q.addRefreshTokenStmt, addRefreshToken,
+		arg.TokenID,
+		arg.ClientID,
+		arg.Jwt,
+		arg.Revoked,
+	)
+	var i IdentityRefreshToken
+	err := row.Scan(
+		&i.TokenID,
+		&i.ClientID,
+		&i.Jwt,
+		&i.Revoked,
+	)
+	return &i, err
+}
+
+const deleteAccessTokenByID = `-- name: DeleteAccessTokenByID :exec
+DELETE FROM identity.access_tokens
+WHERE
+	token_id = $1
+`
+
+func (q *Queries) DeleteAccessTokenByID(ctx context.Context, tokenID string) error {
+	_, err := q.exec(ctx, q.deleteAccessTokenByIDStmt, deleteAccessTokenByID, tokenID)
+	return err
+}
+
+const deleteClientByID = `-- name: DeleteClientByID :exec
+DELETE FROM identity.clients
+WHERE
+	client_id = $1
+`
+
+func (q *Queries) DeleteClientByID(ctx context.Context, clientID string) error {
+	_, err := q.exec(ctx, q.deleteClientByIDStmt, deleteClientByID, clientID)
+	return err
+}
+
+const deleteIdentityUserByID = `-- name: DeleteIdentityUserByID :exec
+DELETE FROM identity.users
+WHERE
+	user_id = $1
+`
+
+func (q *Queries) DeleteIdentityUserByID(ctx context.Context, userID string) error {
+	_, err := q.exec(ctx, q.deleteIdentityUserByIDStmt, deleteIdentityUserByID, userID)
+	return err
+}
+
+const deleteRefreshTokenByID = `-- name: DeleteRefreshTokenByID :exec
+DELETE FROM identity.refresh_tokens
+WHERE
+	token_id = $1
+`
+
+func (q *Queries) DeleteRefreshTokenByID(ctx context.Context, tokenID string) error {
+	_, err := q.exec(ctx, q.deleteRefreshTokenByIDStmt, deleteRefreshTokenByID, tokenID)
+	return err
+}
+
+const getAccessTokenByJWT = `-- name: GetAccessTokenByJWT :one
+SELECT
+	token_id,
+	refresh_token_id,
+	client_id,
+	user_id,
+	jwt,
+	revoked,
+	expires_in_seconds,
+	issued_at,
+	scope,
+	type
+FROM
+	identity.access_tokens
+WHERE
+	jwt = $1
+LIMIT
+	1
+`
+
+type GetAccessTokenByJWTRow struct {
+	TokenID          string
+	RefreshTokenID   sql.NullString
+	ClientID         string
+	UserID           string
+	Jwt              string
+	Revoked          bool
+	ExpiresInSeconds int64
+	IssuedAt         time.Time
+	Scope            string
+	Type             string
+}
+
+func (q *Queries) GetAccessTokenByJWT(ctx context.Context, jwt string) (*GetAccessTokenByJWTRow, error) {
+	row := q.queryRow(ctx, q.getAccessTokenByJWTStmt, getAccessTokenByJWT, jwt)
+	var i GetAccessTokenByJWTRow
+	err := row.Scan(
+		&i.TokenID,
+		&i.RefreshTokenID,
+		&i.ClientID,
+		&i.UserID,
+		&i.Jwt,
+		&i.Revoked,
+		&i.ExpiresInSeconds,
+		&i.IssuedAt,
+		&i.Scope,
+		&i.Type,
+	)
+	return &i, err
+}
+
+const getBoostrapConditions = `-- name: GetBoostrapConditions :many
+SELECT
+	condition_name,
+	satisfied
+FROM
+	wallabago.bootstrap
+`
+
+func (q *Queries) GetBoostrapConditions(ctx context.Context) ([]*WallabagoBootstrap, error) {
+	rows, err := q.query(ctx, q.getBoostrapConditionsStmt, getBoostrapConditions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*WallabagoBootstrap
+	for rows.Next() {
+		var i WallabagoBootstrap
+		if err := rows.Scan(&i.ConditionName, &i.Satisfied); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getClientByID = `-- name: GetClientByID :one
+SELECT
+	client_id,
+	client_secret
+FROM
+	identity.clients
+WHERE
+	client_id = $1
+LIMIT
+	1
+`
+
+func (q *Queries) GetClientByID(ctx context.Context, clientID string) (*IdentityClient, error) {
+	row := q.queryRow(ctx, q.getClientByIDStmt, getClientByID, clientID)
+	var i IdentityClient
+	err := row.Scan(&i.ClientID, &i.ClientSecret)
+	return &i, err
+}
+
+const getIdentityUserByUsername = `-- name: GetIdentityUserByUsername :one
+SELECT
+	user_id,
+	username,
+	email,
+	password_hash
+FROM
+	identity.users
+WHERE
+	username = $1
+LIMIT
+	1
+`
+
+func (q *Queries) GetIdentityUserByUsername(ctx context.Context, username string) (*IdentityUser, error) {
+	row := q.queryRow(ctx, q.getIdentityUserByUsernameStmt, getIdentityUserByUsername, username)
+	var i IdentityUser
+	err := row.Scan(
+		&i.UserID,
+		&i.Username,
+		&i.Email,
+		&i.PasswordHash,
+	)
+	return &i, err
+}
+
+const getRefreshTokenByJWT = `-- name: GetRefreshTokenByJWT :one
+SELECT
+	token_id,
+	client_id,
+	jwt,
+	revoked
+FROM
+	identity.refresh_tokens
+WHERE
+	jwt = $1
+LIMIT
+	1
+`
+
+func (q *Queries) GetRefreshTokenByJWT(ctx context.Context, jwt string) (*IdentityRefreshToken, error) {
+	row := q.queryRow(ctx, q.getRefreshTokenByJWTStmt, getRefreshTokenByJWT, jwt)
+	var i IdentityRefreshToken
+	err := row.Scan(
+		&i.TokenID,
+		&i.ClientID,
+		&i.Jwt,
+		&i.Revoked,
+	)
+	return &i, err
+}
+
+const markBootstrapConditionSatisfied = `-- name: MarkBootstrapConditionSatisfied :one
+INSERT INTO
+	wallabago.bootstrap (condition_name, satisfied)
+VALUES
+	($1, TRUE)
+ON CONFLICT ON CONSTRAINT bootstrap_pkey DO UPDATE
+SET
+	satisfied = TRUE
+RETURNING
+	condition_name,
+	satisfied
+`
+
+func (q *Queries) MarkBootstrapConditionSatisfied(ctx context.Context, conditionName string) (*WallabagoBootstrap, error) {
+	row := q.queryRow(ctx, q.markBootstrapConditionSatisfiedStmt, markBootstrapConditionSatisfied, conditionName)
+	var i WallabagoBootstrap
+	err := row.Scan(&i.ConditionName, &i.Satisfied)
+	return &i, err
+}
+
+const revokeAccessTokenByID = `-- name: RevokeAccessTokenByID :one
+UPDATE identity.access_tokens
+SET
+	revoked = TRUE
+WHERE
+	token_id = $1
+RETURNING
+	token_id,
+	refresh_token_id,
+	client_id,
+	user_id,
+	jwt,
+	revoked,
+	expires_in_seconds,
+	issued_at,
+	scope,
+	type
+`
+
+type RevokeAccessTokenByIDRow struct {
+	TokenID          string
+	RefreshTokenID   sql.NullString
+	ClientID         string
+	UserID           string
+	Jwt              string
+	Revoked          bool
+	ExpiresInSeconds int64
+	IssuedAt         time.Time
+	Scope            string
+	Type             string
+}
+
+func (q *Queries) RevokeAccessTokenByID(ctx context.Context, tokenID string) (*RevokeAccessTokenByIDRow, error) {
+	row := q.queryRow(ctx, q.revokeAccessTokenByIDStmt, revokeAccessTokenByID, tokenID)
+	var i RevokeAccessTokenByIDRow
+	err := row.Scan(
+		&i.TokenID,
+		&i.RefreshTokenID,
+		&i.ClientID,
+		&i.UserID,
+		&i.Jwt,
+		&i.Revoked,
+		&i.ExpiresInSeconds,
+		&i.IssuedAt,
+		&i.Scope,
+		&i.Type,
+	)
+	return &i, err
+}
+
+const revokeRefreshTokenByID = `-- name: RevokeRefreshTokenByID :one
+UPDATE identity.refresh_tokens
+SET
+	revoked = TRUE
+WHERE
+	token_id = $1
+RETURNING
+	token_id,
+	client_id,
+	jwt,
+	revoked
+`
+
+func (q *Queries) RevokeRefreshTokenByID(ctx context.Context, tokenID string) (*IdentityRefreshToken, error) {
+	row := q.queryRow(ctx, q.revokeRefreshTokenByIDStmt, revokeRefreshTokenByID, tokenID)
+	var i IdentityRefreshToken
+	err := row.Scan(
+		&i.TokenID,
+		&i.ClientID,
+		&i.Jwt,
+		&i.Revoked,
+	)
+	return &i, err
 }

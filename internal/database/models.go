@@ -4,5 +4,32 @@
 
 package database
 
-type Entry struct {
+type IdentityClient struct {
+	ClientID     string
+	ClientSecret string
+}
+
+type IdentityRefreshToken struct {
+	TokenID  string
+	ClientID string
+	Jwt      string
+	Revoked  bool
+}
+
+type IdentityUser struct {
+	UserID       string
+	Username     string
+	Email        string
+	PasswordHash []byte
+}
+
+type WallabagoBootstrap struct {
+	ConditionName string
+	Satisfied     bool
+}
+
+type WallabagoUser struct {
+	UserID   string
+	IsAdmin  bool
+	Username string
 }

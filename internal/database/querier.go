@@ -6,11 +6,26 @@ package database
 
 import (
 	"context"
-	"time"
 )
 
 type Querier interface {
-	CurrentTimestamp(ctx context.Context) (time.Time, error)
+	AddAccessToken(ctx context.Context, arg AddAccessTokenParams) (*AddAccessTokenRow, error)
+	AddAppUser(ctx context.Context, arg AddAppUserParams) (*WallabagoUser, error)
+	AddClient(ctx context.Context, arg AddClientParams) (*IdentityClient, error)
+	AddIdentityUser(ctx context.Context, arg AddIdentityUserParams) (*IdentityUser, error)
+	AddRefreshToken(ctx context.Context, arg AddRefreshTokenParams) (*IdentityRefreshToken, error)
+	DeleteAccessTokenByID(ctx context.Context, tokenID string) error
+	DeleteClientByID(ctx context.Context, clientID string) error
+	DeleteIdentityUserByID(ctx context.Context, userID string) error
+	DeleteRefreshTokenByID(ctx context.Context, tokenID string) error
+	GetAccessTokenByJWT(ctx context.Context, jwt string) (*GetAccessTokenByJWTRow, error)
+	GetBoostrapConditions(ctx context.Context) ([]*WallabagoBootstrap, error)
+	GetClientByID(ctx context.Context, clientID string) (*IdentityClient, error)
+	GetIdentityUserByUsername(ctx context.Context, username string) (*IdentityUser, error)
+	GetRefreshTokenByJWT(ctx context.Context, jwt string) (*IdentityRefreshToken, error)
+	MarkBootstrapConditionSatisfied(ctx context.Context, conditionName string) (*WallabagoBootstrap, error)
+	RevokeAccessTokenByID(ctx context.Context, tokenID string) (*RevokeAccessTokenByIDRow, error)
+	RevokeRefreshTokenByID(ctx context.Context, tokenID string) (*IdentityRefreshToken, error)
 }
 
 var _ Querier = (*Queries)(nil)

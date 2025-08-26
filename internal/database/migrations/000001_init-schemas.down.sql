@@ -1,0 +1,2 @@
+DROP SCHEMA IF EXISTS identity;
+DROP SCHEMA IF EXISTS wallabago;

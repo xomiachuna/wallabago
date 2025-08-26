@@ -29,137 +29,189 @@ component WallabagAndroid [
     Android App
 ]
 
-' API
-rectangle HTTPAPI #$API [
-    Wallabago HTTP API
-    ----
-    HTTP handlers
-]
+component Wallabago {
+    ' API
+    rectangle HTTPAPI #$API [
+        Wallabago HTTP API
+        ----
+        HTTP handlers
+    ]
 
-rectangle WebUI #$API [
-    Wallabago Web UI
-    ----
-    HTMX Web App
-]
+    rectangle WebUI #$API [
+        Wallabago Web UI
+        ----
+        HTMX Web App
+    ]
 
-' Middleware
-process AuthNMiddleware #$Middleware [
-    AuthN Middleware
-    ----
-    Authentication checks for
-    protected resources
-    ....
-    Used before
-    every protected Manager
-]
+    ' Middleware
+    process AuthNMiddleware #$Middleware [
+        AuthN Middleware
+        ----
+        Authentication checks for
+        protected resources
+        ....
+        Used before
+        every protected Manager
+    ]
 
-' Managers
-rectangle AdminManager #$Manager [
-    Admin Manager
-    ----
-    User Management
-]
-
-rectangle OAuth2Manager #$Manager [
-    OAuth2 Manager
-    ----
-    OAuth2 token API
-]
-
-rectangle EntryManager #$Manager [
-    Entry Manager
-    ----
-    Entry CRUD
-]
-
-rectangle ConversionManager #$Manager [
-    Conversion Manager
-    ----
-    Entry conversion
-    to EPUB etc.
-]
-
-' Engine
-
-rectangle AuthZEngine #$Engine [
-    AuthZ Engine
-    ----
-    AuthZ policy checks
-]
-
-rectangle RetrievalEngine #$Engine [
-    Retrieval Engine
-    ----
-    Retrieval of entries
-    from the URL
-]
-
-rectangle ConversionEngine #$Engine [
-    Conversion Engine
-    ----
-    Conversion of entries
-    between formats
-]
-
-' Storage
-
-rectangle TokenStorage #$Storage [
-    Token Storage
-    ----
-    Store tokens 
-]
-
-rectangle UserInfoStorage #$Storage [
-    User Info Storage
-    ----
-    Store account 
-    information 
-]
-
-rectangle EntryStorage #$Storage [
-    Entry Storage
-    ----
-    Store entries 
-    and files
-]
-
-' Data
-
-database UserInfoDB #$Persistence [
-    User Info DB
-    ----
-    SQL-based storage
-    for user accounts
-]
-
-database TokenDB #$Persistence [
-    Token DB
-    ----
-    SQL-based storage 
-    for tokens 
-]
-
-collections TokenCache #$Cache [
-    Token Cache
-    ----
-    In-mem storage 
-    for tokens
-]
+    ' Managers
+    rectangle AdminManager #$Manager [
+        Admin Manager
+        ----
+        User Management
+    ]
 
 
-database EntriesDB #$Persistence [
-    Entry DB
-    ----
-    SQL-based storage
-    for entry data
-]
+    rectangle EntryManager #$Manager [
+        Entry Manager
+        ----
+        Entry CRUD
+    ]
 
-collections EntriesFileCache #$Cache [
-    File Cache
-    ----
-    Storage for caching
-    converted files
-]
+    rectangle ConversionManager #$Manager [
+        Conversion Manager
+        ----
+        Entry conversion
+        to EPUB etc.
+    ]
+
+    rectangle BootstrapManager #$Manager [
+        Bootstrap Manager
+        ----
+        Application bootstrap
+        ....
+        Check if bootstrap is needed
+        and runs the necessary steps
+    ]
+
+    ' Engine
+
+    rectangle AuthZEngine #$Engine [
+        AuthZ Engine
+        ----
+        AuthZ policy checks
+    ]
+
+    rectangle RetrievalEngine #$Engine [
+        Retrieval Engine
+        ----
+        Retrieval of entries
+        from the URL
+    ]
+
+    rectangle ConversionEngine #$Engine [
+        Conversion Engine
+        ----
+        Conversion of entries
+        between formats
+    ]
+
+    rectangle BootstrapEngine #$Engine [
+        Bootstrap Engine
+        ----
+        Implementation
+        of bootstrap steps
+        ....
+        Initial admin accounts,
+        clients, identities
+    ]
+
+    ' Storage
+
+
+    rectangle UserStorage #$Storage [
+        User Storage
+        ----
+        Store account 
+        information 
+    ]
+
+    rectangle EntryStorage #$Storage [
+        Entry Storage
+        ----
+        Store entries 
+        and files
+    ]
+
+    rectangle BootstrapStorage #$Storage [
+        Bootstrap Storage
+        ----
+        Store the state
+        of boostrap
+    ]
+
+    ' Data
+
+    database Database #$Persistence {
+        rectangle Application #$Persistence {
+            collections Users [
+                Users
+                ----
+                Admin status,
+                preferences etc.
+            ]
+
+            collections Entries [
+                Entries
+                ----
+                SQL-based storage
+                for entry data
+            ]
+
+            collections Boostrap [
+                Bootstrap
+                ----
+                Boostrap state
+            ]
+        }
+
+        rectangle Identity #$Persistence {
+            collections UserInfo [
+                User Info
+                ----
+                SQL-based storage
+                for user accounts
+                ....
+                [UserID, Email, Passwords]
+            ]
+
+            collections Tokens  [
+                Tokens
+                ----
+                SQL-based storage 
+                for tokens 
+            ]
+
+            collections Clients [
+                Clients
+                ----
+                Storage for client 
+                credentials
+            ]
+        }
+
+    }
+
+    component IdentityProvider #line.dashed;line:darkslategray;text:darkslategray{
+        rectangle IdentityManager #$Manager [
+            Identity Manager
+            ----
+            Handles Authentication
+            ....
+            Provides claims
+            about authenticated user
+            [UserId, Email]
+        ]
+
+        rectangle IdentityStorage #$Storage [
+            Identity SQL Storage
+            ----
+            Store identity-related info
+        ]
+
+    }
+}
+
 
 ' Connections
 User -> KOReader
@@ -168,42 +220,48 @@ User --> WebUI
 User -> WallabagAndroid
 WallabagAndroid --> HTTPAPI
 ' API
-WebUI -> HTTPAPI
+WebUI - HTTPAPI
 
-HTTPAPI --> AuthNMiddleware
-HTTPAPI ---> OAuth2Manager
-HTTPAPI ---> AdminManager
-HTTPAPI ---> ConversionManager
-HTTPAPI ---> EntryManager
+HTTPAPI ..> AuthNMiddleware
+HTTPAPI ---> IdentityManager
+HTTPAPI ---> BootstrapManager
 
 ' Middleware
-AuthNMiddleware ----> TokenStorage
-AuthNMiddleware ----> UserInfoStorage
+AuthNMiddleware --> IdentityManager
+AuthNMiddleware ..> EntryManager
+AuthNMiddleware ..> ConversionManager
+AuthNMiddleware ..> AdminManager
 
 ' Managers
+BootstrapManager ---> BootstrapStorage
+BootstrapManager --> BootstrapEngine
+
 EntryManager --> RetrievalEngine
-EntryManager --> AuthZEngine
+EntryManager ..> AuthZEngine
 EntryManager ---> EntryStorage
 
-OAuth2Manager ---> TokenStorage
-OAuth2Manager ---> UserInfoStorage
-
-AdminManager --> AuthZEngine
-AdminManager ---> UserInfoStorage
+AdminManager ..> AuthZEngine
+AdminManager ---> UserStorage
 
 ConversionManager --> ConversionEngine
-ConversionManager --> AuthZEngine
+ConversionManager ..> AuthZEngine
 ConversionManager ---> EntryStorage
 
 ' Engines
-AuthZEngine --> UserInfoStorage
+AuthZEngine --> UserStorage
+BootstrapEngine --> BootstrapStorage
+BootstrapEngine --> IdentityStorage
+BootstrapEngine --> UserStorage
 
 ' Storage
-EntryStorage --> EntriesFileCache
-EntryStorage --> EntriesDB
+EntryStorage --> Entries
+BootstrapStorage --> Boostrap
+UserStorage --> Users
 
-UserInfoStorage --> UserInfoDB
 
-TokenStorage --> TokenDB
-TokenStorage --> TokenCache
+' IdentityManager
+IdentityManager ---> IdentityStorage
+IdentityStorage --> UserInfo
+IdentityStorage --> Clients
+IdentityStorage --> Tokens
 @enduml

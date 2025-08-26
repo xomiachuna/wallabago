@@ -25,5 +25,4 @@ sql:
         output_models_file_name: models.go
         output_querier_file_name: querier.go
         query_parameter_limit: 1
-        omit_unused_structs: false
-
+        omit_unused_structs: true
