@@ -126,7 +126,7 @@ func (w *Wallabago) Handler() http.Handler {
 	ui := handlers.NewWebUI()
 	api := handlers.NewAPI()
 
-	mux.HandleFunc("/", ui.Index)
+	mux.HandleFunc("/$", ui.Index)
 	mux.Handle("/docs/", http.StripPrefix("/docs/", docs.OpenAPI))
 	mux.Handle("/protected", auth.Wrap(http.HandlerFunc(api.AuthInfo)))
 
