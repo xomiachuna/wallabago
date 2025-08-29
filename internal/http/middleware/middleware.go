@@ -44,3 +44,7 @@ func (mf Func) Wrap(handler http.Handler) http.Handler {
 
 // ensure that Func conforms to Middleware interface.
 var _ Middleware = Func(nil)
+
+func WrapFunc(f func(http.ResponseWriter, *http.Request), middleware Middleware) http.Handler {
+	return middleware.Wrap(http.HandlerFunc(f))
+}

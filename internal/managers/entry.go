@@ -17,7 +17,19 @@ type EntryManager struct {
 	retrieval RetrievalEngine
 }
 
-func (em *EntryManager) AddEntry(ctx context.Context, accessToken core.AccessToken, newEntry core.Entry) (*core.Entry, error) {
+func NewEntryManager(
+	authz AuthorizationEngine,
+	entries EntryStorage,
+	retrieval RetrievalEngine,
+) *EntryManager {
+	return &EntryManager{
+		authz:     authz,
+		entries:   entries,
+		retrieval: retrieval,
+	}
+}
+
+func (em *EntryManager) AddEntry(ctx context.Context, accessToken core.AccessToken, newEntry core.NewEntry) (*core.Entry, error) {
 	tx, err := em.authz.Begin(ctx)
 	if err != nil {
 		return nil, errors.WithStack(err)

@@ -84,3 +84,8 @@ down:
 	@docker compose \
 		-f deployments/docker-compose/docker-compose.yaml \
 		down 
+
+# used for interactive development with tdd/bdd
+.PHONY: delve-test
+delve-test:
+	@dlv test ./test
