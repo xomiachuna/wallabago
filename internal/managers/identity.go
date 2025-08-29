@@ -61,6 +61,7 @@ func (m *IdentityManager) PasswordFlow(ctx context.Context, req core.PasswordFlo
 	client, err := m.storage.GetClientByID(ctx, tx, req.ClientID)
 	if err != nil {
 		// todo: check error type
+
 		return nil, &core.AuthError{
 			ErrorName:        core.AuthErrorInvalidClient,
 			ErrorDescription: errors.WithStack(err).Error(),

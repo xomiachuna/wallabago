@@ -9,6 +9,8 @@ import (
 )
 
 type transactionStarter interface {
+	// we assume that we have a single database so implementations that have this
+	// are all compatible and interchangeable with regards to starting the transaction
 	Begin(ctx context.Context) (*sql.Tx, error)
 }
 
