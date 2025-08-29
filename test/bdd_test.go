@@ -31,6 +31,7 @@ func newTestInfra() *testInfra {
 
 func (ti *testInfra) setup(ctx context.Context, cancelContext context.CancelFunc) error {
 	ti.cancelContext = cancelContext
+
 	// run compose
 	stack, err := compose.NewDockerComposeWith(
 		compose.WithStackFiles("../deployments/docker-compose/docker-compose.yaml"),
@@ -49,6 +50,7 @@ func (ti *testInfra) setup(ctx context.Context, cancelContext context.CancelFunc
 	server, err := http.NewServer(ctx, app.Config{
 		Addr:                   addr,
 		InstrumentationEnabled: false,
+		// taken from compose
 		DBConnectionString:     "postgresql://wallabago-api:wallabago@localhost:25432/wallabago-db?sslmode=disable&application_name=wallabago-api-client",
 		BootstrapClientID:      "web",
 		BootstrapClientSecret:  "web",
@@ -158,7 +160,7 @@ func TestBDDScenarios(t *testing.T) {
 	})
 
 	suite := godog.TestSuite{
-		ScenarioInitializer: func(sc *godog.ScenarioContext) { InitializeScenario(sc) },
+		ScenarioInitializer: InitializeScenario,
 		Options: &godog.Options{
 			Format:         "pretty",
 			Paths:          []string{"../features"},
@@ -171,7 +173,7 @@ func TestBDDScenarios(t *testing.T) {
 		},
 	}
 	if suite.Run() != 0 {
-		t.Fatal("failed to run feature tests")
+		t.Fatal("bdd tests failed")
 	}
 	t.Log("BDD suite finished")
 }
