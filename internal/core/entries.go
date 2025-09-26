@@ -15,14 +15,15 @@ type BareEntry struct {
 
 // Entry represents a downloaded article that is associated with an owner.
 type Entry struct {
-	ID          int32
-	URL         url.URL
-	Title       string
-	OwnerID     string
-	Content     string
-	SHA1        []byte
-	CreatedAt   time.Time
-	RetrievedAt *time.Time
+	ID    int32   `json:"id"`
+	URL   url.URL `json:"url"`
+	Title string  `json:"title"`
+	// TODO: check for schema compliance with wallabag
+	OwnerID     string     `json:"owner_id"`
+	Content     string     `json:"content"`
+	SHA1        []byte     `json:"-"`
+	CreatedAt   time.Time  `json:"created_at"`
+	RetrievedAt *time.Time `json:"retrieved_at"`
 }
 
 // NewEntry represents args for creating a new entry.
