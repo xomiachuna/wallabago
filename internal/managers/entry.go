@@ -2,6 +2,8 @@ package managers
 
 import (
 	"context"
+	"time"
+
 	//nolint:gosec // the strength of sha1 is sufficient for our use-case
 	"crypto/sha1"
 	neturl "net/url"
@@ -63,11 +65,21 @@ func (em *EntryManager) AddEntry(ctx context.Context, accessToken core.AccessTok
 			return nil, errors.WithStack(err)
 		}
 	} else {
-		entry, err = em.retrieval.RetrieveEntryByURL(ctx, newEntry.URL)
+		bareEntry, err := em.retrieval.RetrieveEntryByURL(ctx, newEntry.URL)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-		err = em.entries.AddEntry(ctx, tx, *entry)
+		now := time.Now()
+		entry = &core.Entry{
+			SHA1:        urlHash,
+			CreatedAt:   now,
+			Content:     bareEntry.Content,
+			RetrievedAt: &bareEntry.RetrievedAt,
+			URL:         bareEntry.URL,
+			Title:       bareEntry.Title,
+			OwnerID:     accessToken.UserID,
+		}
+		entry, err = em.entries.AddEntry(ctx, tx, *entry)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}

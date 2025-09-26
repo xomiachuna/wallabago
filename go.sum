@@ -88,6 +88,8 @@ github.com/cenkalti/backoff/v5 v5.0.2 h1:rIfFVxEf1QsI7E1ZHfp/B4DF/6QBAUhmgkxc0H7
 github.com/cenkalti/backoff/v5 v5.0.2/go.mod h1:rkhZdG3JZukswDf7f0cwqPNk4K0sa+F97BxZthm/crw=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
 github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
+github.com/cixtor/readability v1.0.0 h1:6YZo0JJsxt4Xor9lYpln3eSJeuQGukxIBois9wpQI6g=
+github.com/cixtor/readability v1.0.0/go.mod h1:WDrZcthrR2RVDxfMu3q0q59UKhReo5mIZAM6w1+MgFo=
 github.com/cloudflare/cfssl v0.0.0-20180223231731-4e2dcbde5004 h1:lkAMpLVBDaj17e85keuznYcH5rqI438v41pKcBl4ZxQ=
 github.com/cloudflare/cfssl v0.0.0-20180223231731-4e2dcbde5004/go.mod h1:yMWuSON2oQp+43nFtAV/uvKQIFpSPerB57DCt9t8sSA=
 github.com/codahale/rfc6979 v0.0.0-20141003034818-6a90f24967eb h1:EDmT6Q9Zs+SbUoc7Ik9EfrFqcylYqgPZ9ANSbTAntnE=
