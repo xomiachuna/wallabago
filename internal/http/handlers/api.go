@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"net/http"
 	neturl "net/url"
 
@@ -25,7 +24,7 @@ func NewAPI(
 }
 
 const (
-	formFieldURL = "url"
+	fieldURL = "url"
 )
 
 func requireAddEntryForm(r *http.Request) (*core.NewEntry, error) {
@@ -33,7 +32,7 @@ func requireAddEntryForm(r *http.Request) (*core.NewEntry, error) {
 	if err != nil {
 		return nil, err
 	}
-	url, err := requiredPostFormField(r, formFieldURL)
+	url, err := requiredPostFormField(r, fieldURL)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +45,7 @@ func requireAddEntryForm(r *http.Request) (*core.NewEntry, error) {
 	}, nil
 }
 
-func (a *API) AddEntry(w http.ResponseWriter, r *http.Request) {
+func (a *API) HandleAddEntry(w http.ResponseWriter, r *http.Request) {
 	token := middleware.MustGetAccessToken(r)
 	if r.Header.Get(constants.HeaderContentType) != constants.MimeApplicationXWWWFormURLEncoded {
 		w.Header().Set(constants.HeaderAccept, constants.MimeApplicationXWWWFormURLEncoded)
@@ -66,7 +65,25 @@ func (a *API) AddEntry(w http.ResponseWriter, r *http.Request) {
 	response.RespondOKJSON(w, r, result)
 }
 
-func (a *API) EntryExists(w http.ResponseWriter, r *http.Request) {
-	_ = middleware.MustGetAccessToken(r)
-	response.RespondInternalErrorWithStack(w, r, fmt.Errorf("not implemented"))
+func (a *API) HandleEntryExists(w http.ResponseWriter, r *http.Request) {
+	token := middleware.MustGetAccessToken(r)
+	url, err := requiredQueryField(r, fieldURL)
+	if err != nil {
+		response.RespondErrorPlain(w, r, err, http.StatusBadRequest)
+		return
+	}
+	parsedURL, err := neturl.Parse(url)
+	if err != nil {
+		response.RespondErrorPlain(w, r, err, http.StatusBadRequest)
+		return
+	}
+	result, err := a.entryManager.EntryExists(r.Context(), token, *parsedURL)
+	if err != nil {
+		response.RespondInternalErrorWithStack(w, r, err)
+		return
+	}
+
+	response.RespondOKJSON(w, r, core.EntryExistence{
+		Exists: result,
+	})
 }

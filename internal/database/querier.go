@@ -12,6 +12,7 @@ type Querier interface {
 	AddAccessToken(ctx context.Context, arg AddAccessTokenParams) (*AddAccessTokenRow, error)
 	AddAppUser(ctx context.Context, arg AddAppUserParams) (*WallabagoUser, error)
 	AddClient(ctx context.Context, arg AddClientParams) (*IdentityClient, error)
+	AddEntry(ctx context.Context, arg AddEntryParams) (*AddEntryRow, error)
 	AddIdentityUser(ctx context.Context, arg AddIdentityUserParams) (*IdentityUser, error)
 	AddRefreshToken(ctx context.Context, arg AddRefreshTokenParams) (*IdentityRefreshToken, error)
 	DeleteAccessTokenByID(ctx context.Context, tokenID string) error
@@ -21,6 +22,7 @@ type Querier interface {
 	GetAccessTokenByJWT(ctx context.Context, jwt string) (*GetAccessTokenByJWTRow, error)
 	GetBoostrapConditions(ctx context.Context) ([]*WallabagoBootstrap, error)
 	GetClientByID(ctx context.Context, clientID string) (*IdentityClient, error)
+	GetEntryBySHA1(ctx context.Context, sha1 []byte) (*GetEntryBySHA1Row, error)
 	GetIdentityUserByUsername(ctx context.Context, username string) (*IdentityUser, error)
 	GetRefreshTokenByJWT(ctx context.Context, jwt string) (*IdentityRefreshToken, error)
 	MarkBootstrapConditionSatisfied(ctx context.Context, conditionName string) (*WallabagoBootstrap, error)

@@ -33,6 +33,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.addClientStmt, err = db.PrepareContext(ctx, addClient); err != nil {
 		return nil, fmt.Errorf("error preparing query AddClient: %w", err)
 	}
+	if q.addEntryStmt, err = db.PrepareContext(ctx, addEntry); err != nil {
+		return nil, fmt.Errorf("error preparing query AddEntry: %w", err)
+	}
 	if q.addIdentityUserStmt, err = db.PrepareContext(ctx, addIdentityUser); err != nil {
 		return nil, fmt.Errorf("error preparing query AddIdentityUser: %w", err)
 	}
@@ -59,6 +62,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.getClientByIDStmt, err = db.PrepareContext(ctx, getClientByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetClientByID: %w", err)
+	}
+	if q.getEntryBySHA1Stmt, err = db.PrepareContext(ctx, getEntryBySHA1); err != nil {
+		return nil, fmt.Errorf("error preparing query GetEntryBySHA1: %w", err)
 	}
 	if q.getIdentityUserByUsernameStmt, err = db.PrepareContext(ctx, getIdentityUserByUsername); err != nil {
 		return nil, fmt.Errorf("error preparing query GetIdentityUserByUsername: %w", err)
@@ -93,6 +99,11 @@ func (q *Queries) Close() error {
 	if q.addClientStmt != nil {
 		if cerr := q.addClientStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing addClientStmt: %w", cerr)
+		}
+	}
+	if q.addEntryStmt != nil {
+		if cerr := q.addEntryStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing addEntryStmt: %w", cerr)
 		}
 	}
 	if q.addIdentityUserStmt != nil {
@@ -138,6 +149,11 @@ func (q *Queries) Close() error {
 	if q.getClientByIDStmt != nil {
 		if cerr := q.getClientByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getClientByIDStmt: %w", cerr)
+		}
+	}
+	if q.getEntryBySHA1Stmt != nil {
+		if cerr := q.getEntryBySHA1Stmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getEntryBySHA1Stmt: %w", cerr)
 		}
 	}
 	if q.getIdentityUserByUsernameStmt != nil {
@@ -207,6 +223,7 @@ type Queries struct {
 	addAccessTokenStmt                  *sql.Stmt
 	addAppUserStmt                      *sql.Stmt
 	addClientStmt                       *sql.Stmt
+	addEntryStmt                        *sql.Stmt
 	addIdentityUserStmt                 *sql.Stmt
 	addRefreshTokenStmt                 *sql.Stmt
 	deleteAccessTokenByIDStmt           *sql.Stmt
@@ -216,6 +233,7 @@ type Queries struct {
 	getAccessTokenByJWTStmt             *sql.Stmt
 	getBoostrapConditionsStmt           *sql.Stmt
 	getClientByIDStmt                   *sql.Stmt
+	getEntryBySHA1Stmt                  *sql.Stmt
 	getIdentityUserByUsernameStmt       *sql.Stmt
 	getRefreshTokenByJWTStmt            *sql.Stmt
 	markBootstrapConditionSatisfiedStmt *sql.Stmt
@@ -230,6 +248,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		addAccessTokenStmt:                  q.addAccessTokenStmt,
 		addAppUserStmt:                      q.addAppUserStmt,
 		addClientStmt:                       q.addClientStmt,
+		addEntryStmt:                        q.addEntryStmt,
 		addIdentityUserStmt:                 q.addIdentityUserStmt,
 		addRefreshTokenStmt:                 q.addRefreshTokenStmt,
 		deleteAccessTokenByIDStmt:           q.deleteAccessTokenByIDStmt,
@@ -239,6 +258,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getAccessTokenByJWTStmt:             q.getAccessTokenByJWTStmt,
 		getBoostrapConditionsStmt:           q.getBoostrapConditionsStmt,
 		getClientByIDStmt:                   q.getClientByIDStmt,
+		getEntryBySHA1Stmt:                  q.getEntryBySHA1Stmt,
 		getIdentityUserByUsernameStmt:       q.getIdentityUserByUsernameStmt,
 		getRefreshTokenByJWTStmt:            q.getRefreshTokenByJWTStmt,
 		markBootstrapConditionSatisfiedStmt: q.markBootstrapConditionSatisfiedStmt,

@@ -141,6 +141,63 @@ func (q *Queries) AddClient(ctx context.Context, arg AddClientParams) (*Identity
 	return &i, err
 }
 
+const addEntry = `-- name: AddEntry :one
+INSERT INTO
+	wallabago.entries (url, title, "content", owner_id, sha1)
+VALUES
+	($1, $2, $3, $4, $5)
+RETURNING
+	entry_id,
+	owner_id,
+	title,
+	url,
+	created_at,
+	retrieved_at,
+	sha1,
+	content
+`
+
+type AddEntryParams struct {
+	Url     string
+	Title   string
+	Content string
+	OwnerID string
+	Sha1    []byte
+}
+
+type AddEntryRow struct {
+	EntryID     int32
+	OwnerID     string
+	Title       string
+	Url         string
+	CreatedAt   time.Time
+	RetrievedAt sql.NullTime
+	Sha1        []byte
+	Content     string
+}
+
+func (q *Queries) AddEntry(ctx context.Context, arg AddEntryParams) (*AddEntryRow, error) {
+	row := q.queryRow(ctx, q.addEntryStmt, addEntry,
+		arg.Url,
+		arg.Title,
+		arg.Content,
+		arg.OwnerID,
+		arg.Sha1,
+	)
+	var i AddEntryRow
+	err := row.Scan(
+		&i.EntryID,
+		&i.OwnerID,
+		&i.Title,
+		&i.Url,
+		&i.CreatedAt,
+		&i.RetrievedAt,
+		&i.Sha1,
+		&i.Content,
+	)
+	return &i, err
+}
+
 const addIdentityUser = `-- name: AddIdentityUser :one
 INSERT INTO
 	identity.users (user_id, username, email, password_hash)
@@ -355,6 +412,51 @@ func (q *Queries) GetClientByID(ctx context.Context, clientID string) (*Identity
 	row := q.queryRow(ctx, q.getClientByIDStmt, getClientByID, clientID)
 	var i IdentityClient
 	err := row.Scan(&i.ClientID, &i.ClientSecret)
+	return &i, err
+}
+
+const getEntryBySHA1 = `-- name: GetEntryBySHA1 :one
+SELECT
+	entry_id,
+	owner_id,
+	title,
+	url,
+	created_at,
+	retrieved_at,
+	sha1,
+	content
+FROM
+	wallabago.entries
+WHERE
+	sha1 = $1
+LIMIT
+	1
+`
+
+type GetEntryBySHA1Row struct {
+	EntryID     int32
+	OwnerID     string
+	Title       string
+	Url         string
+	CreatedAt   time.Time
+	RetrievedAt sql.NullTime
+	Sha1        []byte
+	Content     string
+}
+
+func (q *Queries) GetEntryBySHA1(ctx context.Context, sha1 []byte) (*GetEntryBySHA1Row, error) {
+	row := q.queryRow(ctx, q.getEntryBySHA1Stmt, getEntryBySHA1, sha1)
+	var i GetEntryBySHA1Row
+	err := row.Scan(
+		&i.EntryID,
+		&i.OwnerID,
+		&i.Title,
+		&i.Url,
+		&i.CreatedAt,
+		&i.RetrievedAt,
+		&i.Sha1,
+		&i.Content,
+	)
 	return &i, err
 }
 

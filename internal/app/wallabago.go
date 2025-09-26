@@ -66,7 +66,19 @@ func NewWallabago(ctx context.Context, config *Config) (*Wallabago, error) {
 	})
 	identityManager := managers.NewIdentityManager(postgresStorage)
 
-	entryManager := managers.NewEntryManager(nil, nil, nil)
+	authzEngine := engines.NewRBACAuthorizationEngine(
+		postgresStorage,
+	)
+
+	retrievalEngine := engines.NewSimpleReadabilityRetrievalEngine(
+		"wallabago",
+	)
+
+	entryManager := managers.NewEntryManager(
+		authzEngine,
+		postgresStorage,
+		retrievalEngine,
+	)
 
 	return &Wallabago{
 		bootstrapManager: boostrapManager,
@@ -134,12 +146,13 @@ func (w *Wallabago) Handler() http.Handler {
 
 	mux.HandleFunc("/{$}", ui.Index)
 	mux.Handle("/docs/", http.StripPrefix("/docs/", docs.OpenAPI))
-	mux.Handle("GET /api/entries/exists", middleware.WrapFunc(api.EntryExists, auth))
-	mux.Handle("POST /api/entries", middleware.WrapFunc(api.AddEntry, auth))
+	mux.Handle("GET /api/entries/exists", auth.RequiredFor(api.HandleEntryExists))
+	mux.Handle("POST /api/entries", auth.RequiredFor(api.HandleAddEntry))
 
 	globalMiddleware := middleware.NewChain(
 		middleware.LoggingMiddleware,
 		middleware.NewOtelHTTPMiddleware(),
+		middleware.PanicInterceptMiddleware,
 	)
 
 	return globalMiddleware.Wrap(mux)

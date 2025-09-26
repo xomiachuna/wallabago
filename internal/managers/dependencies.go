@@ -19,11 +19,11 @@ type AuthorizationEngine interface {
 type EntryStorage interface {
 	EntryExistsBySHA1(ctx context.Context, tx *sql.Tx, hash []byte) (bool, error)
 	GetEntryBySHA1(ctx context.Context, tx *sql.Tx, hash []byte) (*core.Entry, error)
-	AddEntry(ctx context.Context, tx *sql.Tx, entry core.Entry) error
+	AddEntry(ctx context.Context, tx *sql.Tx, entry core.Entry) (*core.Entry, error)
 
 	transactionStarter
 }
 
 type RetrievalEngine interface {
-	RetrieveEntryByURL(ctx context.Context, url url.URL) (*core.Entry, error)
+	RetrieveEntryByURL(ctx context.Context, url url.URL) (*core.BareEntry, error)
 }

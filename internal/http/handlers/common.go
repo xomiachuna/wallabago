@@ -18,3 +18,10 @@ func requiredPostFormField(r *http.Request, key string) (string, error) {
 	}
 	return r.PostForm.Get(key), nil
 }
+
+func requiredQueryField(r *http.Request, key string) (string, error) {
+	if !r.URL.Query().Has(key) {
+		return "", fmt.Errorf("required form field: %s", key)
+	}
+	return r.URL.Query().Get(key), nil
+}

@@ -322,12 +322,12 @@ func thenEntryAdditionShouldHaveStatus(ctx context.Context, success string) (con
 	switch success {
 	case "should":
 		if response.StatusCode != http.StatusOK {
-			return ctx, fmt.Errorf("bad status code, expected 200 but got %d", response.StatusCode)
+			return ctx, fmt.Errorf("bad status code, expected 200 but got %d; body: %s", response.StatusCode, string(response.Body))
 		}
 	case "should not":
 		//nolint:usestdlibvars // false-positive for 100 -> http.StatusContinue
 		if (response.StatusCode % 100) != 4 {
-			return ctx, fmt.Errorf("bad status code, expected 4xx but got %d", response.StatusCode)
+			return ctx, fmt.Errorf("bad status code, expected 4xx but got %d; body: %s", response.StatusCode, string(response.Body))
 		}
 	}
 	return ctx, nil
@@ -365,15 +365,15 @@ func thenTheEntryShouldHaveExistence(ctx context.Context, existence string) (con
 		return ctx, err
 	}
 	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ctx, err
+	}
 	if resp.StatusCode != http.StatusOK {
-		return ctx, fmt.Errorf("received non-200 status code when checking for entry existence: %d", resp.StatusCode)
+		return ctx, fmt.Errorf("received non-200 status code when checking for entry existence: %d, body: %s", resp.StatusCode, string(body))
 	}
 	var existenceResult struct {
 		Exists bool `json:"exists"`
-	}
-	body, err := io.ReadAll(req.Body)
-	if err != nil {
-		return ctx, err
 	}
 	err = json.Unmarshal(body, &existenceResult)
 	if err != nil {
