@@ -394,6 +394,148 @@ func thenTheEntryShouldHaveExistence(ctx context.Context, existence string) (con
 	return ctx, nil
 }
 
+type createdEntryKey struct{}
+
+type createdEntry struct {
+	ID          int32  `json:"id"`
+	URL         string `json:"url"`
+	Title       string `json:"title"`
+	Content     string `json:"content"`
+	OwnerID     string `json:"owner_id"`
+	CreatedAt   string `json:"created_at"`
+	RetrievedAt string `json:"retrieved_at"`
+}
+
+func givenICreatedAValidEntry(ctx context.Context) (context.Context, error) {
+	// Set a valid URL for the entry
+	ctx = context.WithValue(ctx, entryURLKey{}, "https://en.wikipedia.org/wiki/Behavior-driven_development")
+
+	// Authenticate first
+	ctx, err := givenIAmAuthenticated(ctx)
+	if err != nil {
+		return ctx, err
+	}
+
+	// Create the entry
+	ctx, err = whenITryToAddAnEntry(ctx)
+	if err != nil {
+		return ctx, err
+	}
+
+	// Parse the response to extract entry details
+	addResult, ok := ctx.Value(addEntryResponseKey{}).(addEntryResult)
+	if !ok {
+		return ctx, fmt.Errorf("context is missing add entry result")
+	}
+
+	if addResult.StatusCode != http.StatusOK {
+		return ctx, fmt.Errorf("failed to create entry: status %d, body: %s", addResult.StatusCode, string(addResult.Body))
+	}
+
+	logger.InfoContext(ctx, "Entry creation response", "statusCode", addResult.StatusCode, "body", string(addResult.Body))
+
+	var entry createdEntry
+	err = json.Unmarshal(addResult.Body, &entry)
+	if err != nil {
+		return ctx, fmt.Errorf("failed to parse entry: %v, body: %s", err, string(addResult.Body))
+	}
+
+	return context.WithValue(ctx, createdEntryKey{}, entry), nil
+}
+
+type viewEntryResponseKey struct{}
+
+type viewEntryResult struct {
+	StatusCode int
+	Body       []byte
+	Entry      *createdEntry
+}
+
+func whenIViewTheCreatedEntry(ctx context.Context) (context.Context, error) {
+	entry, ok := ctx.Value(createdEntryKey{}).(createdEntry)
+	if !ok {
+		return ctx, fmt.Errorf("context is missing created entry")
+	}
+
+	token, ok := ctx.Value(tokenResponseKey{}).(tokenResponse)
+	if !ok {
+		return ctx, fmt.Errorf("context is missing token response")
+	}
+
+	entryEndpoint, err := makeRequestURL(ctx, fmt.Sprintf("/api/entries/%d", entry.ID))
+	if err != nil {
+		return ctx, err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, entryEndpoint, http.NoBody)
+	if err != nil {
+		return ctx, err
+	}
+	req.Header.Set("Authorization", token.authHeaderValue())
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return ctx, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ctx, err
+	}
+
+	result := viewEntryResult{
+		StatusCode: resp.StatusCode,
+		Body:       body,
+	}
+
+	if resp.StatusCode == http.StatusOK {
+		var viewedEntry createdEntry
+		err = json.Unmarshal(body, &viewedEntry)
+		if err != nil {
+			return ctx, fmt.Errorf("failed to parse viewed entry: %v", err)
+		}
+		result.Entry = &viewedEntry
+	}
+
+	return context.WithValue(ctx, viewEntryResponseKey{}, result), nil
+}
+
+func thenEntryContentShouldMatchTheContentAtCreationTime(ctx context.Context) (context.Context, error) {
+	createdEntry, ok := ctx.Value(createdEntryKey{}).(createdEntry)
+	if !ok {
+		return ctx, fmt.Errorf("context is missing created entry")
+	}
+
+	viewResult, ok := ctx.Value(viewEntryResponseKey{}).(viewEntryResult)
+	if !ok {
+		return ctx, fmt.Errorf("context is missing view entry result")
+	}
+
+	if viewResult.StatusCode != http.StatusOK {
+		return ctx, fmt.Errorf("failed to view entry: status %d, body: %s", viewResult.StatusCode, string(viewResult.Body))
+	}
+
+	if viewResult.Entry == nil {
+		return ctx, fmt.Errorf("viewed entry is nil")
+	}
+
+	if viewResult.Entry.Content != createdEntry.Content {
+		return ctx, fmt.Errorf("content mismatch: created=%q, viewed=%q", createdEntry.Content, viewResult.Entry.Content)
+	}
+
+	if viewResult.Entry.Title != createdEntry.Title {
+		return ctx, fmt.Errorf("title mismatch: created=%q, viewed=%q", createdEntry.Title, viewResult.Entry.Title)
+	}
+
+	if viewResult.Entry.URL != createdEntry.URL {
+		return ctx, fmt.Errorf("URL mismatch: created=%q, viewed=%q", createdEntry.URL, viewResult.Entry.URL)
+	}
+
+	return ctx, nil
+}
+
 func InitializeScenario(ctx *godog.ScenarioContext) {
 	ctx.Given(`there exists a user account`, givenThereExistsAUserAccount)
 	ctx.Given(`there exists a client`, givenThereExistsAClient)
@@ -406,12 +548,14 @@ func InitializeScenario(ctx *godog.ScenarioContext) {
 	ctx.Given(`there exists another (user|admin) account`, givenAnotherAccountExists)
 	ctx.Given(`entry url points to (valid|invalid) html page`, givenEntryURLPointsToHTMLPage)
 	ctx.Given(`I am authenticated`, givenIAmAuthenticated)
+	ctx.Given(`I created a valid entry`, givenICreatedAValidEntry)
 
 	ctx.When(`client uses credentials to authenticate`, whenClientUsesCredentialsToAuthenticate)
 	ctx.When(`I use bootstrap credentials to authenticate`, whenIUseBootstrapCredentialsToAuthenticate)
 	ctx.When(`I create a new (user|admin) account`, whenICreateANewAccount)
 	ctx.When(`I (?:try to )?delete (my|bootstrapped admin|that) account`, whenITryToDeleteAccount)
 	ctx.When(`I try to add an entry`, whenITryToAddAnEntry)
+	ctx.When(`I view the created entry`, whenIViewTheCreatedEntry)
 
 	ctx.Then(`the client should be (authenticated|rejected)`, thenTheClientAuthOutcomeShouldBe)
 	ctx.Then(`I am successfully authenticated as admin`, thenIAmSuccessfullyAuthenticatedAsAdmin)
@@ -419,4 +563,5 @@ func InitializeScenario(ctx *godog.ScenarioContext) {
 	ctx.Then(`(my|bootstrapped admin|admin|user) account (exists|still exists|no longer exists)`, thenAccountExistenceIsAsExpected)
 	ctx.Then(`the entry (should|should not) exist`, thenTheEntryShouldHaveExistence)
 	ctx.Then(`entry addition (should|should not) succeed`, thenEntryAdditionShouldHaveStatus)
+	ctx.Then(`entry content should match the content at creation time`, thenEntryContentShouldMatchTheContentAtCreationTime)
 }
