@@ -2,10 +2,13 @@ package managers
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
+	"encoding/base64"
 	"time"
 
 	"github.com/andriihomiak/wallabago/internal/core"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -28,6 +31,8 @@ type IdentityStorage interface {
 	AddUserInfo(ctx context.Context, tx *sql.Tx, user core.UserInfo) error
 	GetUserInfoByUsername(ctx context.Context, tx *sql.Tx, username string) (*core.UserInfo, error)
 	DeleteUserInfoByID(ctx context.Context, tx *sql.Tx, id string) error
+
+	AddUser(ctx context.Context, tx *sql.Tx, user core.User) error
 
 	transactionStarter
 }
@@ -191,4 +196,71 @@ func (m *IdentityManager) Authenticate(ctx context.Context, accessToken string) 
 		}
 	}
 	return token, nil
+}
+
+func generateRandomPassword(length int) (string, error) {
+	bytes := make([]byte, length)
+	_, err := rand.Read(bytes)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	return base64.URLEncoding.EncodeToString(bytes)[:length], nil
+}
+
+func (m *IdentityManager) CreateUser(ctx context.Context, username string, isAdmin bool) (*core.CreatedUser, error) {
+	tx, err := m.storage.Begin(ctx)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	defer func() {
+		rollbackOnError(ctx, err, tx.Rollback)
+	}()
+
+	// Generate random password
+	password, err := generateRandomPassword(16)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	userID := uuid.New().String()
+
+	// Create UserInfo (generate a unique email based on username)
+	userInfo := core.UserInfo{
+		ID:           userID,
+		Email:        username + "@wallabago.local",
+		Username:     username,
+		PasswordHash: passwordHash,
+	}
+
+	err = m.storage.AddUserInfo(ctx, tx, userInfo)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	// Create User
+	user := core.User{
+		ID:       userID,
+		IsAdmin:  isAdmin,
+		Username: username,
+	}
+
+	err = m.storage.AddUser(ctx, tx, user)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return &core.CreatedUser{
+		Username: username,
+		Password: password,
+	}, nil
 }

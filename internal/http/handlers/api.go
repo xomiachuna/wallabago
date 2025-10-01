@@ -14,19 +14,24 @@ import (
 )
 
 type API struct {
-	entryManager *managers.EntryManager
+	entryManager    *managers.EntryManager
+	identityManager *managers.IdentityManager
 }
 
 func NewAPI(
 	entryManager *managers.EntryManager,
+	identityManager *managers.IdentityManager,
 ) *API {
 	return &API{
-		entryManager: entryManager,
+		entryManager:    entryManager,
+		identityManager: identityManager,
 	}
 }
 
 const (
-	fieldURL = "url"
+	fieldURL      = "url"
+	fieldUsername = "username"
+	fieldIsAdmin  = "is_admin"
 )
 
 func requireAddEntryForm(r *http.Request) (*core.NewEntry, error) {
@@ -114,4 +119,37 @@ func (a *API) HandleGetEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response.RespondOKJSON(w, r, entry)
+}
+
+func (a *API) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get(constants.HeaderContentType) != constants.MimeApplicationXWWWFormURLEncoded {
+		w.Header().Set(constants.HeaderAccept, constants.MimeApplicationXWWWFormURLEncoded)
+		response.RespondErrorPlain(w, r, nil, http.StatusUnsupportedMediaType)
+		return
+	}
+
+	username, err := requiredPostFormField(r, fieldUsername)
+	if err != nil {
+		response.RespondErrorPlain(w, r, err, http.StatusBadRequest)
+		return
+	}
+
+	// Check if is_admin field is provided (optional, defaults to false)
+	isAdmin := false
+	if r.PostForm.Has(fieldIsAdmin) {
+		isAdminStr := r.PostForm.Get(fieldIsAdmin)
+		isAdmin, err = strconv.ParseBool(isAdminStr)
+		if err != nil {
+			response.RespondErrorPlain(w, r, errors.Wrap(err, "invalid is_admin value"), http.StatusBadRequest)
+			return
+		}
+	}
+
+	createdUser, err := a.identityManager.CreateUser(r.Context(), username, isAdmin)
+	if err != nil {
+		response.RespondInternalErrorWithStack(w, r, err)
+		return
+	}
+
+	response.RespondOKJSON(w, r, createdUser)
 }
