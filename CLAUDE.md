@@ -97,7 +97,9 @@ Authentication uses OAuth2 with password grant type. Bootstrap creates a default
 
 ### RBAC Authorization
 
-Access control uses a role-based system with permissions defined in `internal/core/policy`. Managers call `authz.CheckPolicy()` to verify permissions before operations. See `docs/ACCESSCONTROL.md` for details.
+**Note**: Authorization is currently a non-functional stub (allows everything). The `RBACAuthorizationEngine` exists but is not fully implemented. This is intentional and will be revisited later.
+
+Access control is designed to use a role-based system with permissions defined in `internal/core/policy`. Managers call `authz.CheckPolicy()` to verify permissions before operations. See `docs/ACCESSCONTROL.md` for the intended design.
 
 ### BDD Testing
 
