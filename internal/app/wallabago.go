@@ -142,6 +142,7 @@ func (w *Wallabago) Handler() http.Handler {
 	ui := handlers.NewWebUI()
 	api := handlers.NewAPI(
 		w.entryManager,
+		w.identityManager,
 	)
 
 	mux.HandleFunc("/{$}", ui.Index)
@@ -149,6 +150,7 @@ func (w *Wallabago) Handler() http.Handler {
 	mux.Handle("GET /api/entries/exists", auth.RequiredFor(api.HandleEntryExists))
 	mux.Handle("GET /api/entries/{id}", auth.RequiredFor(api.HandleGetEntry))
 	mux.Handle("POST /api/entries", auth.RequiredFor(api.HandleAddEntry))
+	mux.Handle("POST /api/users", auth.RequiredFor(api.HandleCreateUser))
 
 	globalMiddleware := middleware.NewChain(
 		middleware.LoggingMiddleware,

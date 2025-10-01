@@ -184,9 +184,17 @@ func whenICreateANewAccount(ctx context.Context, accountType string) (context.Co
 	}
 
 	username := fmt.Sprintf("test-%s-%d", accountType, ctx.Value("timestamp"))
-	formBody := strings.NewReader(url.Values{
+
+	formValues := url.Values{
 		"username": []string{username},
-	}.Encode())
+	}
+
+	// Set is_admin based on account type
+	if accountType == "admin" {
+		formValues.Set("is_admin", "true")
+	}
+
+	formBody := strings.NewReader(formValues.Encode())
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, createUserEndpoint, formBody)
 	if err != nil {

@@ -5,3 +5,8 @@ type User struct {
 	IsAdmin  bool
 	Username string
 }
+
+type CreatedUser struct {
+	Username string
+	Password string
+}
