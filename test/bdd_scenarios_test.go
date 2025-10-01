@@ -537,23 +537,7 @@ func givenICreatedAValidEntry(ctx context.Context) (context.Context, error) {
 	// Set a valid URL for the entry
 	pageURL := "https://en.wikipedia.org/wiki/Behavior-driven_development"
 
-	// Authenticate using bootstrap credentials
-	bootstrapCreds, ok := ctx.Value(bootstrapCredentialsKey{}).(userCredentials)
-	if !ok {
-		return ctx, fmt.Errorf("failed to extract bootstrap credentials")
-	}
-
-	bootstrapClient, ok := ctx.Value(bootstrapClientKey{}).(clientCredentials)
-	if !ok {
-		return ctx, fmt.Errorf("failed to extract bootstrap client")
-	}
-
-	ctx, err := authenthicateWithCredentialsViaClientCredentialsFlow(ctx, bootstrapCreds, bootstrapClient)
-	if err != nil {
-		return ctx, err
-	}
-
-	// Create the entry
+	// Use existing authentication from context
 	token, ok := ctx.Value(tokenResponseKey{}).(tokenResponse)
 	if !ok {
 		return ctx, fmt.Errorf("context is missing token response")
