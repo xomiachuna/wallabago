@@ -18,6 +18,7 @@ Feature: Entry management
 
     Rule: Users can view their entries
         Scenario: I view an entry created by me
-            Given I created a valid entry
+            Given I am authenticated as user
+            And I created a valid entry
             When I view the created entry
             Then entry content should match the content at creation time
