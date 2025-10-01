@@ -15,3 +15,9 @@ Feature: Entry management
             |page   |success    |exist      |
             |valid  |should     |should     |
             |invalid|should not |should not |
+
+    Rule: Users can view their entries
+        Scenario: I view an entry created by me
+            Given I created a valid entry
+            When I view the created entry
+            Then entry content should match the content at creation time

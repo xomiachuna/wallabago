@@ -1,6 +1,7 @@
 package core
 
 import (
+	"encoding/json"
 	"net/url"
 	"time"
 )
@@ -24,6 +25,38 @@ type Entry struct {
 	SHA1        []byte     `json:"-"`
 	CreatedAt   time.Time  `json:"created_at"`
 	RetrievedAt *time.Time `json:"retrieved_at"`
+}
+
+// MarshalJSON implements custom JSON marshaling for Entry to serialize URL as a string.
+func (e Entry) MarshalJSON() ([]byte, error) {
+	type Alias Entry
+	return json.Marshal(&struct {
+		URL string `json:"url"`
+		*Alias
+	}{
+		URL:   e.URL.String(),
+		Alias: (*Alias)(&e),
+	})
+}
+
+// UnmarshalJSON implements custom JSON unmarshaling for Entry to deserialize URL from a string.
+func (e *Entry) UnmarshalJSON(data []byte) error {
+	type Alias Entry
+	aux := &struct {
+		URL string `json:"url"`
+		*Alias
+	}{
+		Alias: (*Alias)(e),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	parsedURL, err := url.Parse(aux.URL)
+	if err != nil {
+		return err
+	}
+	e.URL = *parsedURL
+	return nil
 }
 
 // NewEntry represents args for creating a new entry.
