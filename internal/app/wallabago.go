@@ -147,6 +147,7 @@ func (w *Wallabago) Handler() http.Handler {
 	mux.HandleFunc("/{$}", ui.Index)
 	mux.Handle("/docs/", http.StripPrefix("/docs/", docs.OpenAPI))
 	mux.Handle("GET /api/entries/exists", auth.RequiredFor(api.HandleEntryExists))
+	mux.Handle("GET /api/entries/{id}", auth.RequiredFor(api.HandleGetEntry))
 	mux.Handle("POST /api/entries", auth.RequiredFor(api.HandleAddEntry))
 
 	globalMiddleware := middleware.NewChain(

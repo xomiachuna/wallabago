@@ -19,6 +19,7 @@ type AuthorizationEngine interface {
 type EntryStorage interface {
 	EntryExistsBySHA1(ctx context.Context, tx *sql.Tx, ownerID string, hash []byte) (bool, error)
 	GetEntryBySHA1(ctx context.Context, tx *sql.Tx, ownerID string, hash []byte) (*core.Entry, error)
+	GetEntryByID(ctx context.Context, tx *sql.Tx, ownerID string, id int32) (*core.Entry, error)
 	AddEntry(ctx context.Context, tx *sql.Tx, entry core.Entry) (*core.Entry, error)
 
 	transactionStarter

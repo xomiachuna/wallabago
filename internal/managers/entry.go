@@ -124,3 +124,34 @@ func (em *EntryManager) EntryExists(ctx context.Context, accessToken core.Access
 
 	return exists, nil
 }
+
+func (em *EntryManager) GetEntry(ctx context.Context, accessToken core.AccessToken, entryID int32) (*core.Entry, error) {
+	tx, err := em.authz.Begin(ctx)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	defer func() {
+		rollbackOnError(ctx, err, tx.Rollback)
+	}()
+
+	err = em.authz.CheckPolicy(ctx, tx, accessToken.UserID, policy.Action{
+		Subject:   policy.SubjectEntries,
+		Operation: policy.OperationRead,
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	entry, err := em.entries.GetEntryByID(ctx, tx, accessToken.UserID, entryID)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return entry, nil
+}

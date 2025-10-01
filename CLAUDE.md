@@ -131,4 +131,8 @@ pre-commit install
 - Access control design: `docs/ACCESSCONTROL.md`
 - Architecture Decision Records: `docs/adr/`
 - Use cases: `docs/USECASES.md`
-- dont prompt for git commands unless I specifically ask you to, add this policy to claude.md
+
+## Development Workflow
+
+- Do not prompt for or execute git commands (add, commit, push, etc.) unless the user specifically requests them
+- just parse it on handler layer, keep the core typesafe

@@ -25,3 +25,11 @@ func requiredQueryField(r *http.Request, key string) (string, error) {
 	}
 	return r.URL.Query().Get(key), nil
 }
+
+func requiredPathParam(r *http.Request, key string) (string, error) {
+	value := r.PathValue(key)
+	if value == "" {
+		return "", fmt.Errorf("required path parameter: %s", key)
+	}
+	return value, nil
+}

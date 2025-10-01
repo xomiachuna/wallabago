@@ -243,3 +243,22 @@ WHERE
 LIMIT
 	1
 ;
+
+-- name: GetEntryByID :one
+SELECT
+	entry_id,
+	owner_id,
+	title,
+	url,
+	created_at,
+	retrieved_at,
+	sha1,
+	content
+FROM
+	wallabago.entries
+WHERE
+	entry_id = $1
+	AND owner_id = $2
+LIMIT
+	1
+;
