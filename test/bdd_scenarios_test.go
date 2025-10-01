@@ -264,7 +264,16 @@ func givenEntryURLPointsToHTMLPage(ctx context.Context, validity string) (contex
 
 func givenIAmAuthenticated(ctx context.Context) (context.Context, error) {
 	// lets use admin account for now
-	return givenIAmAuthenticatedAsAdmin(ctx)
+	bootstrapCreds, ok := ctx.Value(bootstrapCredentialsKey{}).(userCredentials)
+	if !ok {
+		return ctx, fmt.Errorf("failed to extract bootstrap credentials")
+	}
+
+	bootstrapClient, ok := ctx.Value(bootstrapClientKey{}).(clientCredentials)
+	if !ok {
+		return ctx, fmt.Errorf("failed to extract bootstrap client")
+	}
+	return authenthicateWithCredentialsViaClientCredentialsFlow(ctx, bootstrapCreds, bootstrapClient)
 }
 
 type addEntryResponseKey struct{}
@@ -408,36 +417,66 @@ type createdEntry struct {
 
 func givenICreatedAValidEntry(ctx context.Context) (context.Context, error) {
 	// Set a valid URL for the entry
-	ctx = context.WithValue(ctx, entryURLKey{}, "https://en.wikipedia.org/wiki/Behavior-driven_development")
+	pageURL := "https://en.wikipedia.org/wiki/Behavior-driven_development"
 
-	// Authenticate first
-	ctx, err := givenIAmAuthenticated(ctx)
+	// Authenticate using bootstrap credentials
+	bootstrapCreds, ok := ctx.Value(bootstrapCredentialsKey{}).(userCredentials)
+	if !ok {
+		return ctx, fmt.Errorf("failed to extract bootstrap credentials")
+	}
+
+	bootstrapClient, ok := ctx.Value(bootstrapClientKey{}).(clientCredentials)
+	if !ok {
+		return ctx, fmt.Errorf("failed to extract bootstrap client")
+	}
+
+	ctx, err := authenthicateWithCredentialsViaClientCredentialsFlow(ctx, bootstrapCreds, bootstrapClient)
 	if err != nil {
 		return ctx, err
 	}
 
 	// Create the entry
-	ctx, err = whenITryToAddAnEntry(ctx)
+	token, ok := ctx.Value(tokenResponseKey{}).(tokenResponse)
+	if !ok {
+		return ctx, fmt.Errorf("context is missing token response")
+	}
+
+	entryEndpoint, err := makeRequestURL(ctx, "/api/entries")
 	if err != nil {
 		return ctx, err
 	}
 
-	// Parse the response to extract entry details
-	addResult, ok := ctx.Value(addEntryResponseKey{}).(addEntryResult)
-	if !ok {
-		return ctx, fmt.Errorf("context is missing add entry result")
+	formBody := strings.NewReader(url.Values{
+		"url": []string{pageURL},
+	}.Encode())
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, entryEndpoint, formBody)
+	if err != nil {
+		return ctx, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", token.authHeaderValue())
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return ctx, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ctx, err
 	}
 
-	if addResult.StatusCode != http.StatusOK {
-		return ctx, fmt.Errorf("failed to create entry: status %d, body: %s", addResult.StatusCode, string(addResult.Body))
+	if resp.StatusCode != http.StatusOK {
+		return ctx, fmt.Errorf("failed to create entry: status %d, body: %s", resp.StatusCode, string(body))
 	}
-
-	// logger.InfoContext(ctx, "Entry creation response", "statusCode", addResult.StatusCode, "body", string(addResult.Body))
 
 	var entry createdEntry
-	err = json.Unmarshal(addResult.Body, &entry)
+	err = json.Unmarshal(body, &entry)
 	if err != nil {
-		return ctx, fmt.Errorf("failed to parse entry: %v, body: %s", err, string(addResult.Body))
+		return ctx, fmt.Errorf("failed to parse entry: %v, body: %s", err, string(body))
 	}
 
 	return context.WithValue(ctx, createdEntryKey{}, entry), nil
