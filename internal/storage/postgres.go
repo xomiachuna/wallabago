@@ -259,9 +259,12 @@ func (s *PostgreSQLStorage) AddEntry(ctx context.Context, tx *sql.Tx, entry core
 	return &entry, nil
 }
 
-func (s *PostgreSQLStorage) GetEntryBySHA1(ctx context.Context, tx *sql.Tx, sha1 []byte) (*core.Entry, error) {
+func (s *PostgreSQLStorage) GetEntryBySHA1(ctx context.Context, tx *sql.Tx, ownerID string, sha1 []byte) (*core.Entry, error) {
 	q := s.queries.WithTx(tx)
-	entry, err := q.GetEntryBySHA1(ctx, sha1)
+	entry, err := q.GetEntryBySHA1(ctx, database.GetEntryBySHA1Params{
+		Sha1:    sha1,
+		OwnerID: ownerID,
+	})
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -285,9 +288,12 @@ func (s *PostgreSQLStorage) GetEntryBySHA1(ctx context.Context, tx *sql.Tx, sha1
 	}, nil
 }
 
-func (s *PostgreSQLStorage) EntryExistsBySHA1(ctx context.Context, tx *sql.Tx, sha1 []byte) (bool, error) {
+func (s *PostgreSQLStorage) EntryExistsBySHA1(ctx context.Context, tx *sql.Tx, ownerID string, sha1 []byte) (bool, error) {
 	q := s.queries.WithTx(tx)
-	_, err := q.GetEntryBySHA1(ctx, sha1)
+	_, err := q.GetEntryBySHA1(ctx, database.GetEntryBySHA1Params{
+		Sha1:    sha1,
+		OwnerID: ownerID,
+	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return false, nil
