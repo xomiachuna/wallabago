@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	neturl "net/url"
+	"strconv"
 
 	"github.com/andriihomiak/wallabago/internal/core"
 	"github.com/andriihomiak/wallabago/internal/http/constants"
@@ -93,4 +94,24 @@ func (a *API) HandleEntryExists(w http.ResponseWriter, r *http.Request) {
 	response.RespondOKJSON(w, r, core.EntryExistence{
 		Exists: result,
 	})
+}
+
+func (a *API) HandleGetEntry(w http.ResponseWriter, r *http.Request) {
+	token := middleware.MustGetAccessToken(r)
+	entryIDStr, err := requiredPathParam(r, "id")
+	if err != nil {
+		response.RespondErrorPlain(w, r, err, http.StatusBadRequest)
+		return
+	}
+	entryID, err := strconv.ParseInt(entryIDStr, 10, 32)
+	if err != nil {
+		response.RespondErrorPlain(w, r, errors.Wrap(err, "invalid entry ID"), http.StatusBadRequest)
+		return
+	}
+	entry, err := a.entryManager.GetEntry(r.Context(), token, int32(entryID))
+	if err != nil {
+		response.RespondInternalErrorWithStack(w, r, err)
+		return
+	}
+	response.RespondOKJSON(w, r, entry)
 }

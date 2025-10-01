@@ -63,6 +63,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getClientByIDStmt, err = db.PrepareContext(ctx, getClientByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetClientByID: %w", err)
 	}
+	if q.getEntryByIDStmt, err = db.PrepareContext(ctx, getEntryByID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetEntryByID: %w", err)
+	}
 	if q.getEntryBySHA1Stmt, err = db.PrepareContext(ctx, getEntryBySHA1); err != nil {
 		return nil, fmt.Errorf("error preparing query GetEntryBySHA1: %w", err)
 	}
@@ -151,6 +154,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getClientByIDStmt: %w", cerr)
 		}
 	}
+	if q.getEntryByIDStmt != nil {
+		if cerr := q.getEntryByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getEntryByIDStmt: %w", cerr)
+		}
+	}
 	if q.getEntryBySHA1Stmt != nil {
 		if cerr := q.getEntryBySHA1Stmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getEntryBySHA1Stmt: %w", cerr)
@@ -233,6 +241,7 @@ type Queries struct {
 	getAccessTokenByJWTStmt             *sql.Stmt
 	getBoostrapConditionsStmt           *sql.Stmt
 	getClientByIDStmt                   *sql.Stmt
+	getEntryByIDStmt                    *sql.Stmt
 	getEntryBySHA1Stmt                  *sql.Stmt
 	getIdentityUserByUsernameStmt       *sql.Stmt
 	getRefreshTokenByJWTStmt            *sql.Stmt
@@ -258,6 +267,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getAccessTokenByJWTStmt:             q.getAccessTokenByJWTStmt,
 		getBoostrapConditionsStmt:           q.getBoostrapConditionsStmt,
 		getClientByIDStmt:                   q.getClientByIDStmt,
+		getEntryByIDStmt:                    q.getEntryByIDStmt,
 		getEntryBySHA1Stmt:                  q.getEntryBySHA1Stmt,
 		getIdentityUserByUsernameStmt:       q.getIdentityUserByUsernameStmt,
 		getRefreshTokenByJWTStmt:            q.getRefreshTokenByJWTStmt,
