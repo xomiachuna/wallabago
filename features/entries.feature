@@ -1,6 +1,7 @@
 Feature: Entry management
     Background:
-        Given there exists a user account
+        Given there exists my user account
+        And there exists another user account
         And there exists a client
 
     Rule: Users can add entries

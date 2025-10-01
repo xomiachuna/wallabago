@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/cucumber/godog"
 )
@@ -95,10 +97,6 @@ func givenIAmAuthenticatedAsAdmin(ctx context.Context) (context.Context, error) 
 		return ctx, fmt.Errorf("failed to extract bootstrap client")
 	}
 	return authenthicateWithCredentialsViaClientCredentialsFlow(ctx, bootstrapCreds, bootstrapClient)
-}
-
-func thenIAmPreventedFromDeletingTheAccount() error {
-	return godog.ErrUndefined
 }
 
 func thenIAmSuccessfullyAuthenticatedAsAdmin(ctx context.Context) (context.Context, error) {
@@ -231,10 +229,6 @@ func whenICreateANewAccount(ctx context.Context, accountType string) (context.Co
 	return context.WithValue(ctx, createdAccountKey{}, response), nil
 }
 
-func whenITryToDeleteAccount(_ string) error {
-	return godog.ErrUndefined
-}
-
 func makeRequestURL(ctx context.Context, path string) (string, error) {
 	addr, ok := ctx.Value(serverAddrKey{}).(string)
 	if !ok {
@@ -256,23 +250,108 @@ func whenIUseBootstrapCredentialsToAuthenticate(ctx context.Context) (context.Co
 	return authenthicateWithCredentialsViaClientCredentialsFlow(ctx, bootstrapCreds, bootstrapClient)
 }
 
-func givenAnotherAccountExists() error {
-	return godog.ErrUndefined
-}
-
-func thenAccountExistenceIsAsExpected() error {
-	return godog.ErrUndefined
-}
-
 var logger *slog.Logger
 
 func init() {
 	logger = slog.New(slog.NewTextHandler(os.Stderr, nil))
+	rand.Seed(time.Now().UnixNano())
+}
+
+type myUserAccountKey struct{}
+type anotherUserAccountKey struct{}
+
+func generateRandomSuffix() string {
+	return fmt.Sprintf("%d", rand.Int63n(1000000))
+}
+
+func createUserAccountViaAdmin(ctx context.Context, accountName string) (userCredentials, error) {
+	// Authenticate as bootstrap admin
+	bootstrapCreds, ok := ctx.Value(bootstrapCredentialsKey{}).(userCredentials)
+	if !ok {
+		return userCredentials{}, fmt.Errorf("failed to extract bootstrap credentials")
+	}
+
+	bootstrapClient, ok := ctx.Value(bootstrapClientKey{}).(clientCredentials)
+	if !ok {
+		return userCredentials{}, fmt.Errorf("failed to extract bootstrap client")
+	}
+
+	adminCtx, err := authenthicateWithCredentialsViaClientCredentialsFlow(ctx, bootstrapCreds, bootstrapClient)
+	if err != nil {
+		return userCredentials{}, err
+	}
+
+	adminToken, ok := adminCtx.Value(tokenResponseKey{}).(tokenResponse)
+	if !ok {
+		return userCredentials{}, fmt.Errorf("failed to get admin token")
+	}
+
+	// Create user account via admin
+	createUserEndpoint, err := makeRequestURL(ctx, "/api/users")
+	if err != nil {
+		return userCredentials{}, err
+	}
+
+	formBody := strings.NewReader(url.Values{
+		"username": []string{accountName},
+	}.Encode())
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, createUserEndpoint, formBody)
+	if err != nil {
+		return userCredentials{}, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", adminToken.authHeaderValue())
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return userCredentials{}, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return userCredentials{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return userCredentials{}, fmt.Errorf("failed to create user account: status %d, body: %s", resp.StatusCode, string(body))
+	}
+
+	var createdUser createdAccountResponse
+	err = json.Unmarshal(body, &createdUser)
+	if err != nil {
+		return userCredentials{}, fmt.Errorf("failed to parse created user: %v, body: %s", err, string(body))
+	}
+
+	return userCredentials{
+		username: createdUser.Username,
+		password: createdUser.Password,
+	}, nil
+}
+
+func givenThereExistsMyUserAccount(ctx context.Context) (context.Context, error) {
+	accountName := fmt.Sprintf("my-account-%s", generateRandomSuffix())
+	creds, err := createUserAccountViaAdmin(ctx, accountName)
+	if err != nil {
+		return ctx, err
+	}
+	return context.WithValue(ctx, myUserAccountKey{}, creds), nil
+}
+
+func givenThereExistsAnotherUserAccount(ctx context.Context) (context.Context, error) {
+	accountName := fmt.Sprintf("another-account-%s", generateRandomSuffix())
+	creds, err := createUserAccountViaAdmin(ctx, accountName)
+	if err != nil {
+		return ctx, err
+	}
+	return context.WithValue(ctx, anotherUserAccountKey{}, creds), nil
 }
 
 func givenThereExistsAUserAccount(ctx context.Context) (context.Context, error) {
-	// well use the bootstrapped client for now
-	return ctx, nil
+	// Legacy step: creates "my" account for backward compatibility
+	return givenThereExistsMyUserAccount(ctx)
 }
 
 func givenThereExistsAClient(ctx context.Context) (context.Context, error) {
@@ -381,17 +460,17 @@ func givenEntryURLPointsToHTMLPage(ctx context.Context, validity string) (contex
 }
 
 func givenIAmAuthenticatedAsUser(ctx context.Context) (context.Context, error) {
-	// lets use admin account for now
-	bootstrapCreds, ok := ctx.Value(bootstrapCredentialsKey{}).(userCredentials)
+	// Use "my" user account
+	myUserCreds, ok := ctx.Value(myUserAccountKey{}).(userCredentials)
 	if !ok {
-		return ctx, fmt.Errorf("failed to extract bootstrap credentials")
+		return ctx, fmt.Errorf("my user account not found in context")
 	}
 
 	bootstrapClient, ok := ctx.Value(bootstrapClientKey{}).(clientCredentials)
 	if !ok {
 		return ctx, fmt.Errorf("failed to extract bootstrap client")
 	}
-	return authenthicateWithCredentialsViaClientCredentialsFlow(ctx, bootstrapCreds, bootstrapClient)
+	return authenthicateWithCredentialsViaClientCredentialsFlow(ctx, myUserCreds, bootstrapClient)
 }
 
 type addEntryResponseKey struct{}
@@ -679,6 +758,8 @@ func thenEntryContentShouldMatchTheContentAtCreationTime(ctx context.Context) (c
 
 func InitializeScenario(ctx *godog.ScenarioContext) {
 	ctx.Given(`there exists a user account`, givenThereExistsAUserAccount)
+	ctx.Given(`there exists my user account`, givenThereExistsMyUserAccount)
+	ctx.Given(`there exists another user account`, givenThereExistsAnotherUserAccount)
 	ctx.Given(`there exists a client`, givenThereExistsAClient)
 	ctx.Given(`client credentials are (valid|invalid)`, givenClientCredentialsValidity)
 	ctx.Given(`user credentials are (valid|invalid)`, givenUserCredentialsValidity)
@@ -686,7 +767,6 @@ func InitializeScenario(ctx *godog.ScenarioContext) {
 	ctx.Given(`there is an admin account bootstrapped`, givenThereIsAnAdminAccountBootstrapped)
 	ctx.Given(`bootstrap account credentials are valid`, givenBootstrapAccountCredentialsAreValid)
 	ctx.Given(`I am authenticated as admin`, givenIAmAuthenticatedAsAdmin)
-	ctx.Given(`there exists another (user|admin) account`, givenAnotherAccountExists)
 	ctx.Given(`entry url points to (valid|invalid) html page`, givenEntryURLPointsToHTMLPage)
 	ctx.Given(`I am authenticated as user`, givenIAmAuthenticatedAsUser)
 	ctx.Given(`I created a valid entry`, givenICreatedAValidEntry)
@@ -694,7 +774,6 @@ func InitializeScenario(ctx *godog.ScenarioContext) {
 	ctx.When(`client uses credentials to authenticate`, whenClientUsesCredentialsToAuthenticate)
 	ctx.When(`I use bootstrap credentials to authenticate`, whenIUseBootstrapCredentialsToAuthenticate)
 	ctx.When(`I create a new (user|admin) account`, whenICreateANewAccount)
-	ctx.When(`I (?:try to )?delete (my|bootstrapped admin|that) account`, whenITryToDeleteAccount)
 	ctx.When(`I try to add an entry`, whenITryToAddAnEntry)
 	ctx.When(`I view the created entry`, whenIViewTheCreatedEntry)
 
@@ -702,8 +781,6 @@ func InitializeScenario(ctx *godog.ScenarioContext) {
 	ctx.Then(`I am successfully authenticated as admin`, thenIAmSuccessfullyAuthenticatedAsAdmin)
 	ctx.Then(`the account creation should succeed`, thenTheAccountCreationShouldSucceed)
 	ctx.Then(`I am able to login as that account`, thenIAmAbleToLoginAsThatAccount)
-	ctx.Then(`I am prevented from deleting the account`, thenIAmPreventedFromDeletingTheAccount)
-	ctx.Then(`(my|bootstrapped admin|admin|user) account (exists|still exists|no longer exists)`, thenAccountExistenceIsAsExpected)
 	ctx.Then(`the entry (should|should not) exist`, thenTheEntryShouldHaveExistence)
 	ctx.Then(`entry addition (should|should not) succeed`, thenEntryAdditionShouldHaveStatus)
 	ctx.Then(`entry content should match the content at creation time`, thenEntryContentShouldMatchTheContentAtCreationTime)
