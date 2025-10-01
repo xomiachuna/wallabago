@@ -31,6 +31,7 @@ func NewAPI(
 const (
 	fieldURL      = "url"
 	fieldUsername = "username"
+	fieldEmail    = "email"
 	fieldIsAdmin  = "is_admin"
 )
 
@@ -134,6 +135,12 @@ func (a *API) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	email, err := requiredPostFormField(r, fieldEmail)
+	if err != nil {
+		response.RespondErrorPlain(w, r, err, http.StatusBadRequest)
+		return
+	}
+
 	// Check if is_admin field is provided (optional, defaults to false)
 	isAdmin := false
 	if r.PostForm.Has(fieldIsAdmin) {
@@ -145,7 +152,7 @@ func (a *API) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	createdUser, err := a.identityManager.CreateUser(r.Context(), username, isAdmin)
+	createdUser, err := a.identityManager.CreateUser(r.Context(), username, email, isAdmin)
 	if err != nil {
 		response.RespondInternalErrorWithStack(w, r, err)
 		return

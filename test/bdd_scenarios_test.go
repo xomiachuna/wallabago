@@ -182,9 +182,11 @@ func whenICreateANewAccount(ctx context.Context, accountType string) (context.Co
 	}
 
 	username := fmt.Sprintf("test-%s-%d", accountType, ctx.Value("timestamp"))
+	email := fmt.Sprintf("%s@wallabago.local", username)
 
 	formValues := url.Values{
 		"username": []string{username},
+		"email":    []string{email},
 	}
 
 	// Set is_admin based on account type
@@ -292,8 +294,11 @@ func createUserAccountViaAdmin(ctx context.Context, accountName string) (userCre
 		return userCredentials{}, err
 	}
 
+	email := fmt.Sprintf("%s@wallabago.local", accountName)
+
 	formBody := strings.NewReader(url.Values{
 		"username": []string{accountName},
+		"email":    []string{email},
 	}.Encode())
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, createUserEndpoint, formBody)
@@ -347,11 +352,6 @@ func givenThereExistsAnotherUserAccount(ctx context.Context) (context.Context, e
 		return ctx, err
 	}
 	return context.WithValue(ctx, anotherUserAccountKey{}, creds), nil
-}
-
-func givenThereExistsAUserAccount(ctx context.Context) (context.Context, error) {
-	// Legacy step: creates "my" account for backward compatibility
-	return givenThereExistsMyUserAccount(ctx)
 }
 
 func givenThereExistsAClient(ctx context.Context) (context.Context, error) {
@@ -757,8 +757,7 @@ func thenEntryContentShouldMatchTheContentAtCreationTime(ctx context.Context) (c
 }
 
 func InitializeScenario(ctx *godog.ScenarioContext) {
-	ctx.Given(`there exists a user account`, givenThereExistsAUserAccount)
-	ctx.Given(`there exists my user account`, givenThereExistsMyUserAccount)
+	ctx.Given(`there exists (a|my) user account`, givenThereExistsMyUserAccount)
 	ctx.Given(`there exists another user account`, givenThereExistsAnotherUserAccount)
 	ctx.Given(`there exists a client`, givenThereExistsAClient)
 	ctx.Given(`client credentials are (valid|invalid)`, givenClientCredentialsValidity)
