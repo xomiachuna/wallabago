@@ -429,9 +429,15 @@ FROM
 	wallabago.entries
 WHERE
 	sha1 = $1
+	AND owner_id = $2
 LIMIT
 	1
 `
+
+type GetEntryBySHA1Params struct {
+	Sha1    []byte
+	OwnerID string
+}
 
 type GetEntryBySHA1Row struct {
 	EntryID     int32
@@ -444,8 +450,8 @@ type GetEntryBySHA1Row struct {
 	Content     string
 }
 
-func (q *Queries) GetEntryBySHA1(ctx context.Context, sha1 []byte) (*GetEntryBySHA1Row, error) {
-	row := q.queryRow(ctx, q.getEntryBySHA1Stmt, getEntryBySHA1, sha1)
+func (q *Queries) GetEntryBySHA1(ctx context.Context, arg GetEntryBySHA1Params) (*GetEntryBySHA1Row, error) {
+	row := q.queryRow(ctx, q.getEntryBySHA1Stmt, getEntryBySHA1, arg.Sha1, arg.OwnerID)
 	var i GetEntryBySHA1Row
 	err := row.Scan(
 		&i.EntryID,
