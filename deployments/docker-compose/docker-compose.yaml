@@ -12,7 +12,7 @@ x-commons:
 services:
   migrations:
     networks:
-      - wallabago-signoz
+      #      - wallabago-signoz
       - wallabago
     image: migrate/migrate:v4.18.3
     depends_on:
@@ -22,15 +22,15 @@ services:
       - ../../internal/database/migrations/:/migrations
     environment:
       <<:
-        - *otel-traces-env
-        - *otel-metrics-env
-        - *otel-logs-env 
+        #        - *otel-traces-env
+        #        - *otel-metrics-env
+        #        - *otel-logs-env 
         - *db-env
     entrypoint: ["/bin/sh", "-c", "migrate -path=/migrations/ -database $$DB up"]
 
   wallabago:
     networks:
-      - wallabago-signoz
+      #- wallabago-signoz
       - wallabago
     depends_on:
       postgres:
@@ -42,9 +42,9 @@ services:
     restart: no
     environment:
       <<:
-        - *otel-traces-env
-        - *otel-metrics-env
-        - *otel-logs-env 
+        #   - *otel-traces-env
+        #   - *otel-metrics-env
+        #   - *otel-logs-env 
         - *db-env
       WALLABAGO_PORT: 7080
     ports:
@@ -78,6 +78,6 @@ services:
         
 networks:
   wallabago:
-  wallabago-signoz:
-    name: wallabago-signoz
-    external: true
+    # wallabago-signoz:
+    #   name: wallabago-signoz
+    #   external: true
