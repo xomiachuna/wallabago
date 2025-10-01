@@ -302,3 +302,33 @@ func (s *PostgreSQLStorage) EntryExistsBySHA1(ctx context.Context, tx *sql.Tx, o
 	}
 	return true, nil
 }
+
+func (s *PostgreSQLStorage) GetEntryByID(ctx context.Context, tx *sql.Tx, ownerID string, entryID int32) (*core.Entry, error) {
+	q := s.queries.WithTx(tx)
+
+	entry, err := q.GetEntryByID(ctx, database.GetEntryByIDParams{
+		EntryID: entryID,
+		OwnerID: ownerID,
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	url, err := neturl.Parse(entry.Url)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	var retrievedAt *time.Time
+	if entry.RetrievedAt.Valid {
+		retrievedAt = &entry.RetrievedAt.Time
+	}
+	return &core.Entry{
+		ID:          entry.EntryID,
+		URL:         *url,
+		Title:       entry.Title,
+		OwnerID:     entry.OwnerID,
+		Content:     entry.Content,
+		SHA1:        entry.Sha1,
+		CreatedAt:   entry.CreatedAt,
+		RetrievedAt: retrievedAt,
+	}, nil
+}

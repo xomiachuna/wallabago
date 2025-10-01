@@ -415,6 +415,57 @@ func (q *Queries) GetClientByID(ctx context.Context, clientID string) (*Identity
 	return &i, err
 }
 
+const getEntryByID = `-- name: GetEntryByID :one
+SELECT
+	entry_id,
+	owner_id,
+	title,
+	url,
+	created_at,
+	retrieved_at,
+	sha1,
+	content
+FROM
+	wallabago.entries
+WHERE
+	entry_id = $1
+	AND owner_id = $2
+LIMIT
+	1
+`
+
+type GetEntryByIDParams struct {
+	EntryID int32
+	OwnerID string
+}
+
+type GetEntryByIDRow struct {
+	EntryID     int32
+	OwnerID     string
+	Title       string
+	Url         string
+	CreatedAt   time.Time
+	RetrievedAt sql.NullTime
+	Sha1        []byte
+	Content     string
+}
+
+func (q *Queries) GetEntryByID(ctx context.Context, arg GetEntryByIDParams) (*GetEntryByIDRow, error) {
+	row := q.queryRow(ctx, q.getEntryByIDStmt, getEntryByID, arg.EntryID, arg.OwnerID)
+	var i GetEntryByIDRow
+	err := row.Scan(
+		&i.EntryID,
+		&i.OwnerID,
+		&i.Title,
+		&i.Url,
+		&i.CreatedAt,
+		&i.RetrievedAt,
+		&i.Sha1,
+		&i.Content,
+	)
+	return &i, err
+}
+
 const getEntryBySHA1 = `-- name: GetEntryBySHA1 :one
 SELECT
 	entry_id,
