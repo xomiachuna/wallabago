@@ -22,7 +22,7 @@ type Querier interface {
 	GetAccessTokenByJWT(ctx context.Context, jwt string) (*GetAccessTokenByJWTRow, error)
 	GetBoostrapConditions(ctx context.Context) ([]*WallabagoBootstrap, error)
 	GetClientByID(ctx context.Context, clientID string) (*IdentityClient, error)
-	GetEntryBySHA1(ctx context.Context, sha1 []byte) (*GetEntryBySHA1Row, error)
+	GetEntryBySHA1(ctx context.Context, arg GetEntryBySHA1Params) (*GetEntryBySHA1Row, error)
 	GetIdentityUserByUsername(ctx context.Context, username string) (*IdentityUser, error)
 	GetRefreshTokenByJWT(ctx context.Context, jwt string) (*IdentityRefreshToken, error)
 	MarkBootstrapConditionSatisfied(ctx context.Context, conditionName string) (*WallabagoBootstrap, error)

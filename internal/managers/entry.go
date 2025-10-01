@@ -52,7 +52,7 @@ func (em *EntryManager) AddEntry(ctx context.Context, accessToken core.AccessTok
 	//nolint:gosec // sha1 is sufficient for our use-case
 	urlHash := sha1.New().Sum([]byte(newEntry.URL.String()))
 
-	exists, err := em.entries.EntryExistsBySHA1(ctx, tx, urlHash)
+	exists, err := em.entries.EntryExistsBySHA1(ctx, tx, accessToken.UserID, urlHash)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -60,7 +60,7 @@ func (em *EntryManager) AddEntry(ctx context.Context, accessToken core.AccessTok
 	var entry *core.Entry
 
 	if exists {
-		entry, err = em.entries.GetEntryBySHA1(ctx, tx, urlHash)
+		entry, err = em.entries.GetEntryBySHA1(ctx, tx, accessToken.UserID, urlHash)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -101,7 +101,6 @@ func (em *EntryManager) EntryExists(ctx context.Context, accessToken core.Access
 		rollbackOnError(ctx, err, tx.Rollback)
 	}()
 
-	// todo: check ownership?
 	err = em.authz.CheckPolicy(ctx, tx, accessToken.UserID, policy.Action{
 		Subject:   policy.SubjectEntries,
 		Operation: policy.OperationRead,
@@ -113,7 +112,7 @@ func (em *EntryManager) EntryExists(ctx context.Context, accessToken core.Access
 	//nolint:gosec // sha1 is sufficient for our use-case
 	urlHash := sha1.New().Sum([]byte(url.String()))
 
-	exists, err := em.entries.EntryExistsBySHA1(ctx, tx, urlHash)
+	exists, err := em.entries.EntryExistsBySHA1(ctx, tx, accessToken.UserID, urlHash)
 	if err != nil {
 		return false, errors.WithStack(err)
 	}

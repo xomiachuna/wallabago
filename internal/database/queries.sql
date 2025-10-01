@@ -239,6 +239,7 @@ FROM
 	wallabago.entries
 WHERE
 	sha1 = $1
+	AND owner_id = $2
 LIMIT
 	1
 ;

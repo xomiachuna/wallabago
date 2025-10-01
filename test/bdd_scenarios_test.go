@@ -432,7 +432,7 @@ func givenICreatedAValidEntry(ctx context.Context) (context.Context, error) {
 		return ctx, fmt.Errorf("failed to create entry: status %d, body: %s", addResult.StatusCode, string(addResult.Body))
 	}
 
-	logger.InfoContext(ctx, "Entry creation response", "statusCode", addResult.StatusCode, "body", string(addResult.Body))
+	// logger.InfoContext(ctx, "Entry creation response", "statusCode", addResult.StatusCode, "body", string(addResult.Body))
 
 	var entry createdEntry
 	err = json.Unmarshal(addResult.Body, &entry)

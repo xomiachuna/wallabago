@@ -131,3 +131,4 @@ pre-commit install
 - Access control design: `docs/ACCESSCONTROL.md`
 - Architecture Decision Records: `docs/adr/`
 - Use cases: `docs/USECASES.md`
+- dont prompt for git commands unless I specifically ask you to, add this policy to claude.md
