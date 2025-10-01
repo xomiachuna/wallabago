@@ -109,8 +109,118 @@ func thenIAmSuccessfullyAuthenticatedAsAdmin(ctx context.Context) (context.Conte
 	return ctx, nil
 }
 
-func whenICreateANewAccount() error {
-	return godog.ErrUndefined
+func thenTheAccountCreationShouldSucceed(ctx context.Context) (context.Context, error) {
+	createdAccount, ok := ctx.Value(createdAccountKey{}).(createdAccountResponse)
+	if !ok {
+		return ctx, fmt.Errorf("context is missing created account")
+	}
+
+	if createdAccount.StatusCode != http.StatusOK {
+		return ctx, fmt.Errorf("account creation failed with status %d", createdAccount.StatusCode)
+	}
+
+	if createdAccount.Username == "" {
+		return ctx, fmt.Errorf("created account has empty username")
+	}
+
+	if createdAccount.Password == "" {
+		return ctx, fmt.Errorf("created account has empty password")
+	}
+
+	return ctx, nil
+}
+
+func thenIAmAbleToLoginAsThatAccount(ctx context.Context) (context.Context, error) {
+	createdAccount, ok := ctx.Value(createdAccountKey{}).(createdAccountResponse)
+	if !ok {
+		return ctx, fmt.Errorf("context is missing created account")
+	}
+
+	bootstrapClient, ok := ctx.Value(bootstrapClientKey{}).(clientCredentials)
+	if !ok {
+		return ctx, fmt.Errorf("failed to extract bootstrap client")
+	}
+
+	newUserCreds := userCredentials{
+		username: createdAccount.Username,
+		password: createdAccount.Password,
+	}
+
+	ctx, err := authenthicateWithCredentialsViaClientCredentialsFlow(ctx, newUserCreds, bootstrapClient)
+	if err != nil {
+		return ctx, fmt.Errorf("failed to authenticate with newly created account: %w", err)
+	}
+
+	// Verify we got a valid token
+	tokenResp, ok := ctx.Value(tokenResponseKey{}).(tokenResponse)
+	if !ok {
+		return ctx, fmt.Errorf("failed to obtain token response after authentication")
+	}
+
+	if tokenResp.StatusCode != http.StatusOK {
+		return ctx, fmt.Errorf("authentication failed with status %d", tokenResp.StatusCode)
+	}
+
+	return ctx, nil
+}
+
+type createdAccountKey struct{}
+
+type createdAccountResponse struct {
+	Username   string `json:"username"`
+	Password   string `json:"password"`
+	StatusCode int
+}
+
+func whenICreateANewAccount(ctx context.Context, accountType string) (context.Context, error) {
+	token, ok := ctx.Value(tokenResponseKey{}).(tokenResponse)
+	if !ok {
+		return ctx, fmt.Errorf("context is missing token response")
+	}
+
+	createUserEndpoint, err := makeRequestURL(ctx, "/api/users")
+	if err != nil {
+		return ctx, err
+	}
+
+	username := fmt.Sprintf("test-%s-%d", accountType, ctx.Value("timestamp"))
+	formBody := strings.NewReader(url.Values{
+		"username": []string{username},
+	}.Encode())
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, createUserEndpoint, formBody)
+	if err != nil {
+		return ctx, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", token.authHeaderValue())
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return ctx, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ctx, err
+	}
+
+	logger.DebugContext(ctx, "Received create account response", "statusCode", resp.StatusCode, "body", string(body))
+
+	response := createdAccountResponse{
+		StatusCode: resp.StatusCode,
+	}
+
+	if resp.StatusCode == http.StatusOK {
+		err = json.Unmarshal(body, &response)
+		if err != nil {
+			return ctx, err
+		}
+	}
+
+	return context.WithValue(ctx, createdAccountKey{}, response), nil
 }
 
 func whenITryToDeleteAccount(_ string) error {
@@ -262,7 +372,7 @@ func givenEntryURLPointsToHTMLPage(ctx context.Context, validity string) (contex
 	return context.WithValue(ctx, entryURLKey{}, pageURL), nil
 }
 
-func givenIAmAuthenticated(ctx context.Context) (context.Context, error) {
+func givenIAmAuthenticatedAsUser(ctx context.Context) (context.Context, error) {
 	// lets use admin account for now
 	bootstrapCreds, ok := ctx.Value(bootstrapCredentialsKey{}).(userCredentials)
 	if !ok {
@@ -586,7 +696,7 @@ func InitializeScenario(ctx *godog.ScenarioContext) {
 	ctx.Given(`I am authenticated as admin`, givenIAmAuthenticatedAsAdmin)
 	ctx.Given(`there exists another (user|admin) account`, givenAnotherAccountExists)
 	ctx.Given(`entry url points to (valid|invalid) html page`, givenEntryURLPointsToHTMLPage)
-	ctx.Given(`I am authenticated`, givenIAmAuthenticated)
+	ctx.Given(`I am authenticated as user`, givenIAmAuthenticatedAsUser)
 	ctx.Given(`I created a valid entry`, givenICreatedAValidEntry)
 
 	ctx.When(`client uses credentials to authenticate`, whenClientUsesCredentialsToAuthenticate)
@@ -598,6 +708,8 @@ func InitializeScenario(ctx *godog.ScenarioContext) {
 
 	ctx.Then(`the client should be (authenticated|rejected)`, thenTheClientAuthOutcomeShouldBe)
 	ctx.Then(`I am successfully authenticated as admin`, thenIAmSuccessfullyAuthenticatedAsAdmin)
+	ctx.Then(`the account creation should succeed`, thenTheAccountCreationShouldSucceed)
+	ctx.Then(`I am able to login as that account`, thenIAmAbleToLoginAsThatAccount)
 	ctx.Then(`I am prevented from deleting the account`, thenIAmPreventedFromDeletingTheAccount)
 	ctx.Then(`(my|bootstrapped admin|admin|user) account (exists|still exists|no longer exists)`, thenAccountExistenceIsAsExpected)
 	ctx.Then(`the entry (should|should not) exist`, thenTheEntryShouldHaveExistence)

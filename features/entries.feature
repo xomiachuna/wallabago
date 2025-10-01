@@ -5,7 +5,7 @@ Feature: Entry management
 
     Rule: Users can add entries
         Scenario Outline: I add an entry
-            Given I am authenticated
+            Given I am authenticated as a user
             And entry url points to <page> html page
             When I try to add an entry
             Then entry addition <success> succeed
