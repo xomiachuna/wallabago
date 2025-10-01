@@ -326,7 +326,7 @@ func thenEntryAdditionShouldHaveStatus(ctx context.Context, success string) (con
 		}
 	case "should not":
 		//nolint:usestdlibvars // false-positive for 100 -> http.StatusContinue
-		if (response.StatusCode % 100) != 4 {
+		if (response.StatusCode / 100) != 4 {
 			return ctx, fmt.Errorf("bad status code, expected 4xx but got %d; body: %s", response.StatusCode, string(response.Body))
 		}
 	}
