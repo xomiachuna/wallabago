@@ -27,7 +27,11 @@ func (e *SimpleReadabilityRetrievalEngine) getPageContents(ctx context.Context, 
 	client := http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, core.NewRetrievalError("failed to retrieve page", err)
+	}
+	if response.StatusCode >= 400 {
+		response.Body.Close()
+		return nil, core.NewRetrievalError("page returned error status", errors.Errorf("HTTP %d", response.StatusCode))
 	}
 	return response.Body, nil
 }
@@ -47,10 +51,9 @@ func (e *SimpleReadabilityRetrievalEngine) parseEntry(page io.ReadCloser, url ne
 }
 
 func (e *SimpleReadabilityRetrievalEngine) RetrieveEntryByURL(ctx context.Context, url neturl.URL) (*core.BareEntry, error) {
-	// todo: add special errors for unable to retrieve cause (dns, 4xx, no content)
 	pageContents, err := e.getPageContents(ctx, url)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 	entry, err := e.parseEntry(pageContents, url)
 	if err != nil {

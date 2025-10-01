@@ -9,6 +9,7 @@ import (
 	"github.com/andriihomiak/wallabago/internal/http/middleware"
 	"github.com/andriihomiak/wallabago/internal/http/response"
 	"github.com/andriihomiak/wallabago/internal/managers"
+	"github.com/pkg/errors"
 )
 
 type API struct {
@@ -59,6 +60,12 @@ func (a *API) HandleAddEntry(w http.ResponseWriter, r *http.Request) {
 	}
 	result, err := a.entryManager.AddEntry(r.Context(), token, *entry)
 	if err != nil {
+		// Check if this is a retrieval error (user error) vs internal error
+		var retrievalErr *core.RetrievalError
+		if errors.As(err, &retrievalErr) {
+			response.RespondErrorPlain(w, r, err, http.StatusBadRequest)
+			return
+		}
 		response.RespondInternalErrorWithStack(w, r, err)
 		return
 	}
