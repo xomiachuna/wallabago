@@ -1,19 +1,60 @@
 @startuml authz-activity
 header activity
-title Check if user passes\nAuthZ for action
+title Hierarchical RBAC Authorization Check
 
 start
-:Retrieve user Authz;
-if (User is admin?) then (yes)
-    #green:User passes Authz;
+:Query user's max scope
+for subject + operation;
+note right
+  Queries user_roles and role_permissions
+  Returns: global, own, or none
+end note
+
+if (Scope = global?) then (yes)
+    #green:Authorization granted
+    (global access);
     stop
 else (no)
 endif
-if (User is granted\npermission to perform action?) then (yes)
-    #green:User passes Authz;
-    stop
+
+if (Scope = own?) then (yes)
+    if (Resource context provided?) then (no)
+        #green:Authorization granted
+        (has permission in general);
+        note right
+          Resource not specified,
+          user has the permission
+        end note
+        stop
+    else (yes)
+    endif
+
+    if (Resource owner provided?) then (no)
+        #yellow:Look up resource owner;
+        note right
+          Subject-specific lookup:
+          - Entries: query DB
+          - Users: self-owned
+        end note
+    else (yes)
+    endif
+
+    if (User owns resource?) then (yes)
+        #green:Authorization granted
+        (owner match);
+        stop
+    else (no)
+        #red:Authorization denied
+        (not owner);
+        stop
+    endif
 else (no)
-    #red:User did not pass Authz;
+    #red:Authorization denied
+    (insufficient permissions);
+    note right
+      Scope = none or
+      no matching permission
+    end note
     stop
 endif
 
