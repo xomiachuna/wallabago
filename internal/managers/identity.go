@@ -207,7 +207,7 @@ func generateRandomPassword(length int) (string, error) {
 	return base64.URLEncoding.EncodeToString(bytes)[:length], nil
 }
 
-func (m *IdentityManager) CreateUser(ctx context.Context, username string, email string, isAdmin bool) (*core.CreatedUser, error) {
+func (m *IdentityManager) CreateUser(ctx context.Context, username, email string, isAdmin bool) (*core.CreatedUser, error) {
 	tx, err := m.storage.Begin(ctx)
 	if err != nil {
 		return nil, errors.WithStack(err)

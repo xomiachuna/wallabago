@@ -9,7 +9,7 @@ type RetrievalError struct {
 	error
 }
 
-// NewRetrievalError creates a new RetrievalError wrapping the given error with a message
+// NewRetrievalError creates a new RetrievalError wrapping the given error with a message.
 func NewRetrievalError(message string, cause error) *RetrievalError {
 	return &RetrievalError{
 		error: errors.Wrap(cause, message),
