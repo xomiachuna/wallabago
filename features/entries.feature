@@ -23,3 +23,11 @@ Feature: Entry management
             And I created a valid entry
             When I view the created entry
             Then entry content should match the content at creation time
+
+    Rule: Users cannot view entries by other users
+        Scenario: I try to view an entry not created by me
+            Given another user is authenticated
+            And another user created a valid entry
+            And I am authenticated as user
+            When I view the created entry
+            Then the entry should not be visible to me

@@ -266,6 +266,7 @@ func init() {
 type (
 	myUserAccountKey      struct{}
 	anotherUserAccountKey struct{}
+	anotherUserTokenKey   struct{}
 )
 
 func generateRandomSuffix() string {
@@ -761,6 +762,99 @@ func thenEntryContentShouldMatchTheContentAtCreationTime(ctx context.Context) (c
 	return ctx, nil
 }
 
+func givenAnotherUserIsAuthenticated(ctx context.Context) (context.Context, error) {
+	// Use "another" user account
+	anotherUserCreds, ok := ctx.Value(anotherUserAccountKey{}).(userCredentials)
+	if !ok {
+		return ctx, fmt.Errorf("another user account not found in context")
+	}
+
+	bootstrapClient, ok := ctx.Value(bootstrapClientKey{}).(clientCredentials)
+	if !ok {
+		return ctx, fmt.Errorf("failed to extract bootstrap client")
+	}
+
+	// Authenticate and get token
+	authCtx, err := authenthicateWithCredentialsViaClientCredentialsFlow(ctx, anotherUserCreds, bootstrapClient)
+	if err != nil {
+		return ctx, err
+	}
+
+	// Extract token from auth context and store it in the separate key
+	token, ok := authCtx.Value(tokenResponseKey{}).(tokenResponse)
+	if !ok {
+		return ctx, fmt.Errorf("failed to get token for another user")
+	}
+
+	// Store in separate key to avoid overwriting main user's token
+	return context.WithValue(ctx, anotherUserTokenKey{}, token), nil
+}
+
+func givenAnotherUserCreatedAValidEntry(ctx context.Context) (context.Context, error) {
+	// Set a valid URL for the entry
+	pageURL := "https://en.wikipedia.org/wiki/Behavior-driven_development"
+
+	// Use another user's token
+	token, ok := ctx.Value(anotherUserTokenKey{}).(tokenResponse)
+	if !ok {
+		return ctx, fmt.Errorf("context is missing another user's token")
+	}
+
+	entryEndpoint, err := makeRequestURL(ctx, "/api/entries")
+	if err != nil {
+		return ctx, err
+	}
+
+	formBody := strings.NewReader(url.Values{
+		"url": []string{pageURL},
+	}.Encode())
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, entryEndpoint, formBody)
+	if err != nil {
+		return ctx, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", token.authHeaderValue())
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return ctx, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ctx, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return ctx, fmt.Errorf("failed to create entry: status %d, body: %s", resp.StatusCode, string(body))
+	}
+
+	var entry createdEntry
+	err = json.Unmarshal(body, &entry)
+	if err != nil {
+		return ctx, fmt.Errorf("failed to parse entry: %w, body: %s", err, string(body))
+	}
+
+	return context.WithValue(ctx, createdEntryKey{}, entry), nil
+}
+
+func thenTheEntryShouldNotBeVisibleToMe(ctx context.Context) (context.Context, error) {
+	viewResult, ok := ctx.Value(viewEntryResponseKey{}).(viewEntryResult)
+	if !ok {
+		return ctx, fmt.Errorf("context is missing view entry result")
+	}
+
+	// Should receive a 403 Forbidden or 404 Not Found
+	if viewResult.StatusCode != http.StatusForbidden && viewResult.StatusCode != http.StatusNotFound {
+		return ctx, fmt.Errorf("expected 403 or 404, got %d, body: %s", viewResult.StatusCode, string(viewResult.Body))
+	}
+
+	return ctx, nil
+}
+
 func InitializeScenario(ctx *godog.ScenarioContext) {
 	ctx.Given(`there exists (a|my) user account`, givenThereExistsMyUserAccount)
 	ctx.Given(`there exists another user account`, givenThereExistsAnotherUserAccount)
@@ -774,6 +868,8 @@ func InitializeScenario(ctx *godog.ScenarioContext) {
 	ctx.Given(`entry url points to (valid|invalid) html page`, givenEntryURLPointsToHTMLPage)
 	ctx.Given(`I am authenticated as user`, givenIAmAuthenticatedAsUser)
 	ctx.Given(`I created a valid entry`, givenICreatedAValidEntry)
+	ctx.Given(`another user is authenticated`, givenAnotherUserIsAuthenticated)
+	ctx.Given(`another user created a valid entry`, givenAnotherUserCreatedAValidEntry)
 
 	ctx.When(`client uses credentials to authenticate`, whenClientUsesCredentialsToAuthenticate)
 	ctx.When(`I use bootstrap credentials to authenticate`, whenIUseBootstrapCredentialsToAuthenticate)
@@ -788,4 +884,5 @@ func InitializeScenario(ctx *godog.ScenarioContext) {
 	ctx.Then(`the entry (should|should not) exist`, thenTheEntryShouldHaveExistence)
 	ctx.Then(`entry addition (should|should not) succeed`, thenEntryAdditionShouldHaveStatus)
 	ctx.Then(`entry content should match the content at creation time`, thenEntryContentShouldMatchTheContentAtCreationTime)
+	ctx.Then(`the entry should not be visible to me`, thenTheEntryShouldNotBeVisibleToMe)
 }
