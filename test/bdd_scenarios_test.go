@@ -252,18 +252,24 @@ func whenIUseBootstrapCredentialsToAuthenticate(ctx context.Context) (context.Co
 	return authenthicateWithCredentialsViaClientCredentialsFlow(ctx, bootstrapCreds, bootstrapClient)
 }
 
-var logger *slog.Logger
+var (
+	logger *slog.Logger
+	rng    *rand.Rand
+)
 
 func init() {
 	logger = slog.New(slog.NewTextHandler(os.Stderr, nil))
-	rand.Seed(time.Now().UnixNano())
+	//nolint:gosec // G404 - weak random is acceptable for test data generation
+	rng = rand.New(rand.NewSource(time.Now().UnixNano()))
 }
 
-type myUserAccountKey struct{}
-type anotherUserAccountKey struct{}
+type (
+	myUserAccountKey      struct{}
+	anotherUserAccountKey struct{}
+)
 
 func generateRandomSuffix() string {
-	return fmt.Sprintf("%d", rand.Int63n(1000000))
+	return fmt.Sprintf("%d", rng.Int63n(1000000))
 }
 
 func createUserAccountViaAdmin(ctx context.Context, accountName string) (userCredentials, error) {
@@ -327,7 +333,7 @@ func createUserAccountViaAdmin(ctx context.Context, accountName string) (userCre
 	var createdUser createdAccountResponse
 	err = json.Unmarshal(body, &createdUser)
 	if err != nil {
-		return userCredentials{}, fmt.Errorf("failed to parse created user: %v, body: %s", err, string(body))
+		return userCredentials{}, fmt.Errorf("failed to parse created user: %w, body: %s", err, string(body))
 	}
 
 	return userCredentials{
@@ -531,7 +537,6 @@ func thenEntryAdditionShouldHaveStatus(ctx context.Context, success string) (con
 			return ctx, fmt.Errorf("bad status code, expected 200 but got %d; body: %s", response.StatusCode, string(response.Body))
 		}
 	case "should not":
-		//nolint:usestdlibvars // false-positive for 100 -> http.StatusContinue
 		if (response.StatusCode / 100) != 4 {
 			return ctx, fmt.Errorf("bad status code, expected 4xx but got %d; body: %s", response.StatusCode, string(response.Body))
 		}
@@ -657,7 +662,7 @@ func givenICreatedAValidEntry(ctx context.Context) (context.Context, error) {
 	var entry createdEntry
 	err = json.Unmarshal(body, &entry)
 	if err != nil {
-		return ctx, fmt.Errorf("failed to parse entry: %v, body: %s", err, string(body))
+		return ctx, fmt.Errorf("failed to parse entry: %w, body: %s", err, string(body))
 	}
 
 	return context.WithValue(ctx, createdEntryKey{}, entry), nil
@@ -714,7 +719,7 @@ func whenIViewTheCreatedEntry(ctx context.Context) (context.Context, error) {
 		var viewedEntry createdEntry
 		err = json.Unmarshal(body, &viewedEntry)
 		if err != nil {
-			return ctx, fmt.Errorf("failed to parse viewed entry: %v", err)
+			return ctx, fmt.Errorf("failed to parse viewed entry: %w", err)
 		}
 		result.Entry = &viewedEntry
 	}
