@@ -258,7 +258,50 @@ FROM
 	wallabago.entries
 WHERE
 	entry_id = $1
-	AND owner_id = $2
 LIMIT
 	1
+;
+
+-- name: GetUserMaxScope :one
+-- Returns the highest scope level for a user's permission on a resource type and operation.
+-- COALESCE returns 0 if MAX is NULL (when user has no roles or no matching permissions).
+-- Scope levels: 0 = none/no permission, 1 = none, 2 = own, 3 = global
+SELECT
+	COALESCE(
+		MAX(
+			CASE rp.scope
+				WHEN 'global' THEN 3
+				WHEN 'own' THEN 2
+				WHEN 'none' THEN 1
+				ELSE 0
+			END
+		),
+		0
+	)::INT AS scope_level
+FROM
+	wallabago.user_roles ur
+	JOIN wallabago.role_permissions rp ON ur.role_id = rp.role_id
+WHERE
+	ur.user_id = $1
+	AND rp.resource_type = $2
+	AND rp.operation = $3
+;
+
+-- name: GetEntryOwnerID :one
+SELECT
+	owner_id
+FROM
+	wallabago.entries
+WHERE
+	entry_id = $1
+LIMIT
+	1
+;
+
+-- name: AssignUserRole :exec
+INSERT INTO
+	wallabago.user_roles (user_id, role_id)
+VALUES
+	($1, $2)
+ON CONFLICT DO NOTHING
 ;

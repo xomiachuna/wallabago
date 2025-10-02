@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/andriihomiak/wallabago/internal/core"
+	"github.com/andriihomiak/wallabago/internal/core/policy"
 	"github.com/andriihomiak/wallabago/internal/database"
 	"github.com/pkg/errors"
 )
@@ -303,13 +304,10 @@ func (s *PostgreSQLStorage) EntryExistsBySHA1(ctx context.Context, tx *sql.Tx, o
 	return true, nil
 }
 
-func (s *PostgreSQLStorage) GetEntryByID(ctx context.Context, tx *sql.Tx, ownerID string, entryID int32) (*core.Entry, error) {
+func (s *PostgreSQLStorage) GetEntryByID(ctx context.Context, tx *sql.Tx, entryID int32) (*core.Entry, error) {
 	q := s.queries.WithTx(tx)
 
-	entry, err := q.GetEntryByID(ctx, database.GetEntryByIDParams{
-		EntryID: entryID,
-		OwnerID: ownerID,
-	})
+	entry, err := q.GetEntryByID(ctx, entryID)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -331,4 +329,52 @@ func (s *PostgreSQLStorage) GetEntryByID(ctx context.Context, tx *sql.Tx, ownerI
 		CreatedAt:   entry.CreatedAt,
 		RetrievedAt: retrievedAt,
 	}, nil
+}
+
+func (s *PostgreSQLStorage) GetUserMaxScope(
+	ctx context.Context, tx *sql.Tx,
+	userID string, subject policy.Subject, operation policy.Operation,
+) (policy.Scope, error) {
+	q := s.queries.WithTx(tx)
+	scopeLevel, err := q.GetUserMaxScope(ctx, database.GetUserMaxScopeParams{
+		UserID:       userID,
+		ResourceType: string(subject),
+		Operation:    string(operation),
+	})
+	if err != nil {
+		return policy.ScopeNone, errors.WithStack(err)
+	}
+
+	// Convert scope level to scope type
+	switch scopeLevel {
+	case 3:
+		return policy.ScopeGlobal, nil
+	case 2:
+		return policy.ScopeOwn, nil
+	case 1:
+		return policy.ScopeNone, nil
+	default: // 0 or unexpected values
+		return policy.ScopeNone, nil
+	}
+}
+
+func (s *PostgreSQLStorage) GetEntryOwnerID(ctx context.Context, tx *sql.Tx, entryID int32) (string, error) {
+	q := s.queries.WithTx(tx)
+	ownerID, err := q.GetEntryOwnerID(ctx, entryID)
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	return ownerID, nil
+}
+
+func (s *PostgreSQLStorage) AssignUserRole(ctx context.Context, tx *sql.Tx, userID string, role policy.Role) error {
+	q := s.queries.WithTx(tx)
+	err := q.AssignUserRole(ctx, database.AssignUserRoleParams{
+		UserID: userID,
+		RoleID: string(role),
+	})
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
 }

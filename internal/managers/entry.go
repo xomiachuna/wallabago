@@ -138,12 +138,15 @@ func (em *EntryManager) GetEntry(ctx context.Context, accessToken core.AccessTok
 	err = em.authz.CheckPolicy(ctx, tx, accessToken.UserID, policy.Action{
 		Subject:   policy.SubjectEntries,
 		Operation: policy.OperationRead,
+		Resource: &policy.Resource{
+			ID: entryID,
+		},
 	})
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	entry, err := em.entries.GetEntryByID(ctx, tx, accessToken.UserID, entryID)
+	entry, err := em.entries.GetEntryByID(ctx, tx, entryID)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

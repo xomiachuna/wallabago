@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/andriihomiak/wallabago/internal/core"
+	"github.com/andriihomiak/wallabago/internal/core/policy"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
@@ -33,6 +34,7 @@ type IdentityStorage interface {
 	DeleteUserInfoByID(ctx context.Context, tx *sql.Tx, id string) error
 
 	AddUser(ctx context.Context, tx *sql.Tx, user core.User) error
+	AssignUserRole(ctx context.Context, tx *sql.Tx, userID string, role policy.Role) error
 
 	transactionStarter
 }
@@ -250,6 +252,16 @@ func (m *IdentityManager) CreateUser(ctx context.Context, username, email string
 	}
 
 	err = m.storage.AddUser(ctx, tx, user)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	// Assign appropriate role for RBAC
+	role := policy.RoleUser
+	if isAdmin {
+		role = policy.RoleAdmin
+	}
+	err = m.storage.AssignUserRole(ctx, tx, userID, role)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}

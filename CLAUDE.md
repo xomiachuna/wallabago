@@ -136,3 +136,4 @@ pre-commit install
 
 - Do not prompt for or execute git commands (add, commit, push, etc.) unless the user specifically requests them
 - just parse it on handler layer, keep the core typesafe
+- use generated always as identity instead of serial

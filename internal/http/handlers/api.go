@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/andriihomiak/wallabago/internal/core"
+	"github.com/andriihomiak/wallabago/internal/core/policy"
 	"github.com/andriihomiak/wallabago/internal/http/constants"
 	"github.com/andriihomiak/wallabago/internal/http/middleware"
 	"github.com/andriihomiak/wallabago/internal/http/response"
@@ -116,6 +117,10 @@ func (a *API) HandleGetEntry(w http.ResponseWriter, r *http.Request) {
 	}
 	entry, err := a.entryManager.GetEntry(r.Context(), token, int32(entryID))
 	if err != nil {
+		if errors.Is(err, policy.ErrForbidden) {
+			response.RespondErrorPlain(w, r, err, http.StatusForbidden)
+			return
+		}
 		response.RespondInternalErrorWithStack(w, r, err)
 		return
 	}

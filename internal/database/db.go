@@ -42,6 +42,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.addRefreshTokenStmt, err = db.PrepareContext(ctx, addRefreshToken); err != nil {
 		return nil, fmt.Errorf("error preparing query AddRefreshToken: %w", err)
 	}
+	if q.assignUserRoleStmt, err = db.PrepareContext(ctx, assignUserRole); err != nil {
+		return nil, fmt.Errorf("error preparing query AssignUserRole: %w", err)
+	}
 	if q.deleteAccessTokenByIDStmt, err = db.PrepareContext(ctx, deleteAccessTokenByID); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteAccessTokenByID: %w", err)
 	}
@@ -69,11 +72,17 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getEntryBySHA1Stmt, err = db.PrepareContext(ctx, getEntryBySHA1); err != nil {
 		return nil, fmt.Errorf("error preparing query GetEntryBySHA1: %w", err)
 	}
+	if q.getEntryOwnerIDStmt, err = db.PrepareContext(ctx, getEntryOwnerID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetEntryOwnerID: %w", err)
+	}
 	if q.getIdentityUserByUsernameStmt, err = db.PrepareContext(ctx, getIdentityUserByUsername); err != nil {
 		return nil, fmt.Errorf("error preparing query GetIdentityUserByUsername: %w", err)
 	}
 	if q.getRefreshTokenByJWTStmt, err = db.PrepareContext(ctx, getRefreshTokenByJWT); err != nil {
 		return nil, fmt.Errorf("error preparing query GetRefreshTokenByJWT: %w", err)
+	}
+	if q.getUserMaxScopeStmt, err = db.PrepareContext(ctx, getUserMaxScope); err != nil {
+		return nil, fmt.Errorf("error preparing query GetUserMaxScope: %w", err)
 	}
 	if q.markBootstrapConditionSatisfiedStmt, err = db.PrepareContext(ctx, markBootstrapConditionSatisfied); err != nil {
 		return nil, fmt.Errorf("error preparing query MarkBootstrapConditionSatisfied: %w", err)
@@ -117,6 +126,11 @@ func (q *Queries) Close() error {
 	if q.addRefreshTokenStmt != nil {
 		if cerr := q.addRefreshTokenStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing addRefreshTokenStmt: %w", cerr)
+		}
+	}
+	if q.assignUserRoleStmt != nil {
+		if cerr := q.assignUserRoleStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing assignUserRoleStmt: %w", cerr)
 		}
 	}
 	if q.deleteAccessTokenByIDStmt != nil {
@@ -164,6 +178,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getEntryBySHA1Stmt: %w", cerr)
 		}
 	}
+	if q.getEntryOwnerIDStmt != nil {
+		if cerr := q.getEntryOwnerIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getEntryOwnerIDStmt: %w", cerr)
+		}
+	}
 	if q.getIdentityUserByUsernameStmt != nil {
 		if cerr := q.getIdentityUserByUsernameStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getIdentityUserByUsernameStmt: %w", cerr)
@@ -172,6 +191,11 @@ func (q *Queries) Close() error {
 	if q.getRefreshTokenByJWTStmt != nil {
 		if cerr := q.getRefreshTokenByJWTStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getRefreshTokenByJWTStmt: %w", cerr)
+		}
+	}
+	if q.getUserMaxScopeStmt != nil {
+		if cerr := q.getUserMaxScopeStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getUserMaxScopeStmt: %w", cerr)
 		}
 	}
 	if q.markBootstrapConditionSatisfiedStmt != nil {
@@ -234,6 +258,7 @@ type Queries struct {
 	addEntryStmt                        *sql.Stmt
 	addIdentityUserStmt                 *sql.Stmt
 	addRefreshTokenStmt                 *sql.Stmt
+	assignUserRoleStmt                  *sql.Stmt
 	deleteAccessTokenByIDStmt           *sql.Stmt
 	deleteClientByIDStmt                *sql.Stmt
 	deleteIdentityUserByIDStmt          *sql.Stmt
@@ -243,8 +268,10 @@ type Queries struct {
 	getClientByIDStmt                   *sql.Stmt
 	getEntryByIDStmt                    *sql.Stmt
 	getEntryBySHA1Stmt                  *sql.Stmt
+	getEntryOwnerIDStmt                 *sql.Stmt
 	getIdentityUserByUsernameStmt       *sql.Stmt
 	getRefreshTokenByJWTStmt            *sql.Stmt
+	getUserMaxScopeStmt                 *sql.Stmt
 	markBootstrapConditionSatisfiedStmt *sql.Stmt
 	revokeAccessTokenByIDStmt           *sql.Stmt
 	revokeRefreshTokenByIDStmt          *sql.Stmt
@@ -260,6 +287,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		addEntryStmt:                        q.addEntryStmt,
 		addIdentityUserStmt:                 q.addIdentityUserStmt,
 		addRefreshTokenStmt:                 q.addRefreshTokenStmt,
+		assignUserRoleStmt:                  q.assignUserRoleStmt,
 		deleteAccessTokenByIDStmt:           q.deleteAccessTokenByIDStmt,
 		deleteClientByIDStmt:                q.deleteClientByIDStmt,
 		deleteIdentityUserByIDStmt:          q.deleteIdentityUserByIDStmt,
@@ -269,8 +297,10 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getClientByIDStmt:                   q.getClientByIDStmt,
 		getEntryByIDStmt:                    q.getEntryByIDStmt,
 		getEntryBySHA1Stmt:                  q.getEntryBySHA1Stmt,
+		getEntryOwnerIDStmt:                 q.getEntryOwnerIDStmt,
 		getIdentityUserByUsernameStmt:       q.getIdentityUserByUsernameStmt,
 		getRefreshTokenByJWTStmt:            q.getRefreshTokenByJWTStmt,
+		getUserMaxScopeStmt:                 q.getUserMaxScopeStmt,
 		markBootstrapConditionSatisfiedStmt: q.markBootstrapConditionSatisfiedStmt,
 		revokeAccessTokenByIDStmt:           q.revokeAccessTokenByIDStmt,
 		revokeRefreshTokenByIDStmt:          q.revokeRefreshTokenByIDStmt,
