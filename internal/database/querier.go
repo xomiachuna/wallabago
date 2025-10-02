@@ -15,6 +15,7 @@ type Querier interface {
 	AddEntry(ctx context.Context, arg AddEntryParams) (*AddEntryRow, error)
 	AddIdentityUser(ctx context.Context, arg AddIdentityUserParams) (*IdentityUser, error)
 	AddRefreshToken(ctx context.Context, arg AddRefreshTokenParams) (*IdentityRefreshToken, error)
+	AssignUserRole(ctx context.Context, arg AssignUserRoleParams) error
 	DeleteAccessTokenByID(ctx context.Context, tokenID string) error
 	DeleteClientByID(ctx context.Context, clientID string) error
 	DeleteIdentityUserByID(ctx context.Context, userID string) error
@@ -22,10 +23,15 @@ type Querier interface {
 	GetAccessTokenByJWT(ctx context.Context, jwt string) (*GetAccessTokenByJWTRow, error)
 	GetBoostrapConditions(ctx context.Context) ([]*WallabagoBootstrap, error)
 	GetClientByID(ctx context.Context, clientID string) (*IdentityClient, error)
-	GetEntryByID(ctx context.Context, arg GetEntryByIDParams) (*GetEntryByIDRow, error)
+	GetEntryByID(ctx context.Context, entryID int32) (*GetEntryByIDRow, error)
 	GetEntryBySHA1(ctx context.Context, arg GetEntryBySHA1Params) (*GetEntryBySHA1Row, error)
+	GetEntryOwnerID(ctx context.Context, entryID int32) (string, error)
 	GetIdentityUserByUsername(ctx context.Context, username string) (*IdentityUser, error)
 	GetRefreshTokenByJWT(ctx context.Context, jwt string) (*IdentityRefreshToken, error)
+	// Returns the highest scope level for a user's permission on a resource type and operation.
+	// COALESCE returns 0 if MAX is NULL (when user has no roles or no matching permissions).
+	// Scope levels: 0 = none/no permission, 1 = none, 2 = own, 3 = global
+	GetUserMaxScope(ctx context.Context, arg GetUserMaxScopeParams) (int32, error)
 	MarkBootstrapConditionSatisfied(ctx context.Context, conditionName string) (*WallabagoBootstrap, error)
 	RevokeAccessTokenByID(ctx context.Context, tokenID string) (*RevokeAccessTokenByIDRow, error)
 	RevokeRefreshTokenByID(ctx context.Context, tokenID string) (*IdentityRefreshToken, error)

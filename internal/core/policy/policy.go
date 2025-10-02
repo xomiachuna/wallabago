@@ -20,9 +20,30 @@ var (
 	OperationExport Operation = "export"
 )
 
+type Scope string
+
+var (
+	ScopeNone   Scope = "none"
+	ScopeOwn    Scope = "own"
+	ScopeGlobal Scope = "global"
+)
+
+type Role string
+
+var (
+	RoleAdmin Role = "admin"
+	RoleUser  Role = "user"
+)
+
+type Resource struct {
+	ID      any    // Resource ID (type depends on resource: int32 for entries, string for users, etc.)
+	OwnerID string // Optional - if empty, authorization engine will look it up
+}
+
 type Action struct {
 	Subject   Subject
 	Operation Operation
+	Resource  *Resource // nil for permission checks without specific resource context
 }
 
 var ErrForbidden = fmt.Errorf("forbidden")

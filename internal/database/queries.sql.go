@@ -270,6 +270,24 @@ func (q *Queries) AddRefreshToken(ctx context.Context, arg AddRefreshTokenParams
 	return &i, err
 }
 
+const assignUserRole = `-- name: AssignUserRole :exec
+INSERT INTO
+	wallabago.user_roles (user_id, role_id)
+VALUES
+	($1, $2)
+ON CONFLICT DO NOTHING
+`
+
+type AssignUserRoleParams struct {
+	UserID string
+	RoleID string
+}
+
+func (q *Queries) AssignUserRole(ctx context.Context, arg AssignUserRoleParams) error {
+	_, err := q.exec(ctx, q.assignUserRoleStmt, assignUserRole, arg.UserID, arg.RoleID)
+	return err
+}
+
 const deleteAccessTokenByID = `-- name: DeleteAccessTokenByID :exec
 DELETE FROM identity.access_tokens
 WHERE
@@ -429,15 +447,9 @@ FROM
 	wallabago.entries
 WHERE
 	entry_id = $1
-	AND owner_id = $2
 LIMIT
 	1
 `
-
-type GetEntryByIDParams struct {
-	EntryID int32
-	OwnerID string
-}
 
 type GetEntryByIDRow struct {
 	EntryID     int32
@@ -450,8 +462,8 @@ type GetEntryByIDRow struct {
 	Content     string
 }
 
-func (q *Queries) GetEntryByID(ctx context.Context, arg GetEntryByIDParams) (*GetEntryByIDRow, error) {
-	row := q.queryRow(ctx, q.getEntryByIDStmt, getEntryByID, arg.EntryID, arg.OwnerID)
+func (q *Queries) GetEntryByID(ctx context.Context, entryID int32) (*GetEntryByIDRow, error) {
+	row := q.queryRow(ctx, q.getEntryByIDStmt, getEntryByID, entryID)
 	var i GetEntryByIDRow
 	err := row.Scan(
 		&i.EntryID,
@@ -517,6 +529,24 @@ func (q *Queries) GetEntryBySHA1(ctx context.Context, arg GetEntryBySHA1Params) 
 	return &i, err
 }
 
+const getEntryOwnerID = `-- name: GetEntryOwnerID :one
+SELECT
+	owner_id
+FROM
+	wallabago.entries
+WHERE
+	entry_id = $1
+LIMIT
+	1
+`
+
+func (q *Queries) GetEntryOwnerID(ctx context.Context, entryID int32) (string, error) {
+	row := q.queryRow(ctx, q.getEntryOwnerIDStmt, getEntryOwnerID, entryID)
+	var owner_id string
+	err := row.Scan(&owner_id)
+	return owner_id, err
+}
+
 const getIdentityUserByUsername = `-- name: GetIdentityUserByUsername :one
 SELECT
 	user_id,
@@ -567,6 +597,44 @@ func (q *Queries) GetRefreshTokenByJWT(ctx context.Context, jwt string) (*Identi
 		&i.Revoked,
 	)
 	return &i, err
+}
+
+const getUserMaxScope = `-- name: GetUserMaxScope :one
+SELECT
+	COALESCE(
+		MAX(
+			CASE rp.scope
+				WHEN 'global' THEN 3
+				WHEN 'own' THEN 2
+				WHEN 'none' THEN 1
+				ELSE 0
+			END
+		),
+		0
+	)::INT AS scope_level
+FROM
+	wallabago.user_roles ur
+	JOIN wallabago.role_permissions rp ON ur.role_id = rp.role_id
+WHERE
+	ur.user_id = $1
+	AND rp.resource_type = $2
+	AND rp.operation = $3
+`
+
+type GetUserMaxScopeParams struct {
+	UserID       string
+	ResourceType string
+	Operation    string
+}
+
+// Returns the highest scope level for a user's permission on a resource type and operation.
+// COALESCE returns 0 if MAX is NULL (when user has no roles or no matching permissions).
+// Scope levels: 0 = none/no permission, 1 = none, 2 = own, 3 = global
+func (q *Queries) GetUserMaxScope(ctx context.Context, arg GetUserMaxScopeParams) (int32, error) {
+	row := q.queryRow(ctx, q.getUserMaxScopeStmt, getUserMaxScope, arg.UserID, arg.ResourceType, arg.Operation)
+	var scope_level int32
+	err := row.Scan(&scope_level)
+	return scope_level, err
 }
 
 const markBootstrapConditionSatisfied = `-- name: MarkBootstrapConditionSatisfied :one
