@@ -37,12 +37,6 @@ make codegen             # Generate all code (sqlc)
 make sqlc                # Generate database code from SQL (via sqlc)
 ```
 
-### Database Operations
-```bash
-make dev-up-postgres     # Start only postgres (for local dev)
-make dev-migrate-up      # Run database migrations
-make dev-migrate-down    # Rollback database migrations
-```
 
 ### Documentation
 ```bash
@@ -103,7 +97,7 @@ Access control is designed to use a role-based system with permissions defined i
 
 ### BDD Testing
 
-The project uses Cucumber/Godog for BDD tests. Test scenarios are in `features/*.feature` files. The test suite (`test/bdd_test.go`) spins up a full docker-compose stack with postgres and runs scenarios against a real server instance.
+The project uses Cucumber/Godog for BDD tests. Test scenarios are in `features/*.feature` files. The test suite (`test/bdd_test.go`) uses temporary SQLite databases and runs scenarios against a real server instance.
 
 ### Database and Code Generation
 
@@ -115,8 +109,13 @@ The project uses Cucumber/Godog for BDD tests. Test scenarios are in `features/*
 ## Environment Variables
 
 - `WALLABAGO_PORT`: Server port (default: 8080)
+- `WALLABAGO_DB_PATH`: SQLite database file path (default: ./wallabago.db)
+- `WALLABAGO_BOOTSTRAP_ADMIN_USERNAME`: Bootstrap admin username (default: admin)
+- `WALLABAGO_BOOTSTRAP_ADMIN_PASSWORD`: Bootstrap admin password (default: admin)
+- `WALLABAGO_BOOTSTRAP_ADMIN_EMAIL`: Bootstrap admin email (default: admin@admin.co)
+- `WALLABAGO_BOOTSTRAP_CLIENT_ID`: Bootstrap client ID (default: web)
+- `WALLABAGO_BOOTSTRAP_CLIENT_SECRET`: Bootstrap client secret (default: web)
 - `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`: Enable OpenTelemetry tracing
-- `DB`: PostgreSQL connection string
 
 ## Pre-commit Hooks
 

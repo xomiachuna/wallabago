@@ -36,10 +36,6 @@ func initTracer() {
 	Tracer = otel.Tracer(otelScopeName, oteltrace.WithInstrumentationVersion(otelScopeVersion))
 }
 
-func init() {
-	initTracer()
-}
-
 func newPropagator() otelpropagation.TextMapPropagator {
 	return otelpropagation.NewCompositeTextMapPropagator(
 		otelpropagation.Baggage{},
