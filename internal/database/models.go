@@ -4,32 +4,32 @@
 
 package database
 
-type IdentityClient struct {
+type AppBootstrap struct {
+	ConditionName string
+	Satisfied     int64
+}
+
+type AppUser struct {
+	UserID   string
+	IsAdmin  int64
+	Username string
+}
+
+type IdpClient struct {
 	ClientID     string
 	ClientSecret string
 }
 
-type IdentityRefreshToken struct {
+type IdpRefreshToken struct {
 	TokenID  string
 	ClientID string
 	Jwt      string
-	Revoked  bool
+	Revoked  int64
 }
 
-type IdentityUser struct {
+type IdpUser struct {
 	UserID       string
 	Username     string
 	Email        string
 	PasswordHash []byte
-}
-
-type WallabagoBootstrap struct {
-	ConditionName string
-	Satisfied     bool
-}
-
-type WallabagoUser struct {
-	UserID   string
-	IsAdmin  bool
-	Username string
 }

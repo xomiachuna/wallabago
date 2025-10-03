@@ -1,2 +1,1 @@
-DROP TABLE IF EXISTS wallabago.bootstrap
-;
+DROP TABLE IF EXISTS app_bootstrap;

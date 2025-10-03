@@ -110,12 +110,12 @@ func (a *API) HandleGetEntry(w http.ResponseWriter, r *http.Request) {
 		response.RespondErrorPlain(w, r, err, http.StatusBadRequest)
 		return
 	}
-	entryID, err := strconv.ParseInt(entryIDStr, 10, 32)
+	entryID, err := strconv.ParseInt(entryIDStr, 10, 64)
 	if err != nil {
 		response.RespondErrorPlain(w, r, errors.Wrap(err, "invalid entry ID"), http.StatusBadRequest)
 		return
 	}
-	entry, err := a.entryManager.GetEntry(r.Context(), token, int32(entryID))
+	entry, err := a.entryManager.GetEntry(r.Context(), token, entryID)
 	if err != nil {
 		if errors.Is(err, policy.ErrForbidden) {
 			response.RespondErrorPlain(w, r, err, http.StatusForbidden)

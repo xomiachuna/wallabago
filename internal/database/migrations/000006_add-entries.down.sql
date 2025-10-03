@@ -1,2 +1,1 @@
-DROP TABLE IF EXISTS wallabago.entries
-;
+DROP TABLE IF EXISTS app_entries;

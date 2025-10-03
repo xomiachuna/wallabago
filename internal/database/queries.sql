@@ -3,17 +3,17 @@ SELECT
 	condition_name,
 	satisfied
 FROM
-	wallabago.bootstrap
+	app_bootstrap
 ;
 
 -- name: MarkBootstrapConditionSatisfied :one
 INSERT INTO
-	wallabago.bootstrap (condition_name, satisfied)
+	app_bootstrap (condition_name, satisfied)
 VALUES
-	($1, TRUE)
-ON CONFLICT ON CONSTRAINT bootstrap_pkey DO UPDATE
+	(?, 1)
+ON CONFLICT (condition_name) DO UPDATE
 SET
-	satisfied = TRUE
+	satisfied = 1
 RETURNING
 	condition_name,
 	satisfied
@@ -21,9 +21,9 @@ RETURNING
 
 -- name: AddClient :one
 INSERT INTO
-	identity.clients (client_id, client_secret)
+	idp_clients (client_id, client_secret)
 VALUES
-	($1, $2)
+	(?, ?)
 RETURNING
 	client_id,
 	client_secret
@@ -34,24 +34,24 @@ SELECT
 	client_id,
 	client_secret
 FROM
-	identity.clients
+	idp_clients
 WHERE
-	client_id = $1
+	client_id = ?
 LIMIT
 	1
 ;
 
 -- name: DeleteClientByID :exec
-DELETE FROM identity.clients
+DELETE FROM idp_clients
 WHERE
-	client_id = $1
+	client_id = ?
 ;
 
 -- name: AddIdentityUser :one
 INSERT INTO
-	identity.users (user_id, username, email, password_hash)
+	idp_users (user_id, username, email, password_hash)
 VALUES
-	($1, $2, $3, $4)
+	(?, ?, ?, ?)
 RETURNING
 	user_id,
 	username,
@@ -66,24 +66,24 @@ SELECT
 	email,
 	password_hash
 FROM
-	identity.users
+	idp_users
 WHERE
-	username = $1
+	username = ?
 LIMIT
 	1
 ;
 
 -- name: DeleteIdentityUserByID :exec
-DELETE FROM identity.users
+DELETE FROM idp_users
 WHERE
-	user_id = $1
+	user_id = ?
 ;
 
 -- name: AddRefreshToken :one
 INSERT INTO
-	identity.refresh_tokens (token_id, client_id, jwt, revoked)
+	idp_refresh_tokens (token_id, client_id, jwt, revoked)
 VALUES
-	($1, $2, $3, $4)
+	(?, ?, ?, ?)
 RETURNING
 	token_id,
 	client_id,
@@ -98,19 +98,19 @@ SELECT
 	jwt,
 	revoked
 FROM
-	identity.refresh_tokens
+	idp_refresh_tokens
 WHERE
-	jwt = $1
+	jwt = ?
 LIMIT
 	1
 ;
 
 -- name: RevokeRefreshTokenByID :one
-UPDATE identity.refresh_tokens
+UPDATE idp_refresh_tokens
 SET
-	revoked = TRUE
+	revoked = 1
 WHERE
-	token_id = $1
+	token_id = ?
 RETURNING
 	token_id,
 	client_id,
@@ -119,14 +119,14 @@ RETURNING
 ;
 
 -- name: DeleteRefreshTokenByID :exec
-DELETE FROM identity.refresh_tokens
+DELETE FROM idp_refresh_tokens
 WHERE
-	token_id = $1
+	token_id = ?
 ;
 
 -- name: AddAccessToken :one
 INSERT INTO
-	identity.access_tokens (
+	idp_access_tokens (
 		token_id,
 		refresh_token_id,
 		client_id,
@@ -134,12 +134,12 @@ INSERT INTO
 		jwt,
 		revoked,
 		expires_in_seconds,
-		issued_at,
+		issued_at_unix,
 		scope,
 		type
 	)
 VALUES
-	($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+	(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING
 	token_id,
 	refresh_token_id,
@@ -148,7 +148,7 @@ RETURNING
 	jwt,
 	revoked,
 	expires_in_seconds,
-	issued_at,
+	issued_at_unix,
 	scope,
 	type
 ;
@@ -162,23 +162,23 @@ SELECT
 	jwt,
 	revoked,
 	expires_in_seconds,
-	issued_at,
+	issued_at_unix,
 	scope,
 	type
 FROM
-	identity.access_tokens
+	idp_access_tokens
 WHERE
-	jwt = $1
+	jwt = ?
 LIMIT
 	1
 ;
 
 -- name: RevokeAccessTokenByID :one
-UPDATE identity.access_tokens
+UPDATE idp_access_tokens
 SET
-	revoked = TRUE
+	revoked = 1
 WHERE
-	token_id = $1
+	token_id = ?
 RETURNING
 	token_id,
 	refresh_token_id,
@@ -187,22 +187,22 @@ RETURNING
 	jwt,
 	revoked,
 	expires_in_seconds,
-	issued_at,
+	issued_at_unix,
 	scope,
 	type
 ;
 
 -- name: DeleteAccessTokenByID :exec
-DELETE FROM identity.access_tokens
+DELETE FROM idp_access_tokens
 WHERE
-	token_id = $1
+	token_id = ?
 ;
 
 -- name: AddAppUser :one
 INSERT INTO
-	wallabago.users (user_id, is_admin, username)
+	app_users (user_id, is_admin, username)
 VALUES
-	($1, $2, $3)
+	(?, ?, ?)
 RETURNING
 	user_id,
 	is_admin,
@@ -211,16 +211,16 @@ RETURNING
 
 -- name: AddEntry :one
 INSERT INTO
-	wallabago.entries (url, title, "content", owner_id, sha1)
+	app_entries (url, title, "content", owner_id, sha1)
 VALUES
-	($1, $2, $3, $4, $5)
+	(?, ?, ?, ?, ?)
 RETURNING
 	entry_id,
 	owner_id,
 	title,
 	url,
-	created_at,
-	retrieved_at,
+	created_at_unix,
+	retrieved_at_unix,
 	sha1,
 	content
 ;
@@ -231,15 +231,15 @@ SELECT
 	owner_id,
 	title,
 	url,
-	created_at,
-	retrieved_at,
+	created_at_unix,
+	retrieved_at_unix,
 	sha1,
 	content
 FROM
-	wallabago.entries
+	app_entries
 WHERE
-	sha1 = $1
-	AND owner_id = $2
+	sha1 = ?
+	AND owner_id = ?
 LIMIT
 	1
 ;
@@ -250,14 +250,14 @@ SELECT
 	owner_id,
 	title,
 	url,
-	created_at,
-	retrieved_at,
+	created_at_unix,
+	retrieved_at_unix,
 	sha1,
 	content
 FROM
-	wallabago.entries
+	app_entries
 WHERE
-	entry_id = $1
+	entry_id = ?
 LIMIT
 	1
 ;
@@ -277,31 +277,31 @@ SELECT
 			END
 		),
 		0
-	)::INT AS scope_level
+	) AS scope_level
 FROM
-	wallabago.user_roles ur
-	JOIN wallabago.role_permissions rp ON ur.role_id = rp.role_id
+	app_user_roles ur
+	JOIN app_role_permissions rp ON ur.role_id = rp.role_id
 WHERE
-	ur.user_id = $1
-	AND rp.resource_type = $2
-	AND rp.operation = $3
+	ur.user_id = ?
+	AND rp.resource_type = ?
+	AND rp.operation = ?
 ;
 
 -- name: GetEntryOwnerID :one
 SELECT
 	owner_id
 FROM
-	wallabago.entries
+	app_entries
 WHERE
-	entry_id = $1
+	entry_id = ?
 LIMIT
 	1
 ;
 
 -- name: AssignUserRole :exec
 INSERT INTO
-	wallabago.user_roles (user_id, role_id)
+	app_user_roles (user_id, role_id)
 VALUES
-	($1, $2)
+	(?, ?)
 ON CONFLICT DO NOTHING
 ;

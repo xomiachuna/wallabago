@@ -89,26 +89,3 @@ down:
 .PHONY: dev-delve
 dev-delve:
 	dlv test ./test
-
-# start postgres only (for dev purposes)
-.PHONY: dev-up-postgres
-dev-up-postgres:
-	docker compose \
-		-f deployments/docker-compose/docker-compose.yaml \
-		up postgres
-
-# migrate the db in docker compose
-.PHONY: dev-migrate-up
-dev-migrate-up:
-	migrate \
-		-source file://internal/database/migrations/ \
-		-database 'postgresql://wallabago-api:wallabago@localhost:25432/wallabago-db?sslmode=disable' \
-		up
-
-# migrate the db in docker compose
-.PHONY: dev-migrate-down
-dev-migrate-down:
-	migrate \
-		-source file://internal/database/migrations/ \
-		-database 'postgresql://wallabago-api:wallabago@localhost:25432/wallabago-db?sslmode=disable' \
-		down

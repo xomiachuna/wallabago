@@ -1,2 +1,3 @@
-CREATE SCHEMA IF NOT EXISTS identity;
-CREATE SCHEMA IF NOT EXISTS wallabago;
+-- SQLite doesn't use schemas; we use table name prefixes instead
+-- (idp_* for identity tables, app_* for application tables)
+-- This migration is a no-op for compatibility with PostgreSQL migration numbering

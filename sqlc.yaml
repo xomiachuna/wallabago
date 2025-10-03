@@ -1,7 +1,7 @@
 version: "2"
 servers: []
 sql:
-  - engine: postgresql
+  - engine: sqlite
     schema: internal/database/migrations/
     queries: internal/database/queries.sql
     gen:

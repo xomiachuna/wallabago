@@ -16,7 +16,7 @@ type BareEntry struct {
 
 // Entry represents a downloaded article that is associated with an owner.
 type Entry struct {
-	ID    int32   `json:"id"`
+	ID    int64   `json:"id"`
 	URL   url.URL `json:"url"`
 	Title string  `json:"title"`
 	// TODO: check for schema compliance with wallabag

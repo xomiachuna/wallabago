@@ -8,12 +8,13 @@ package database
 import (
 	"context"
 	"database/sql"
-	"time"
 )
 
 const addAccessToken = `-- name: AddAccessToken :one
+;
+
 INSERT INTO
-	identity.access_tokens (
+	idp_access_tokens (
 		token_id,
 		refresh_token_id,
 		client_id,
@@ -21,12 +22,12 @@ INSERT INTO
 		jwt,
 		revoked,
 		expires_in_seconds,
-		issued_at,
+		issued_at_unix,
 		scope,
 		type
 	)
 VALUES
-	($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+	(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING
 	token_id,
 	refresh_token_id,
@@ -35,7 +36,7 @@ RETURNING
 	jwt,
 	revoked,
 	expires_in_seconds,
-	issued_at,
+	issued_at_unix,
 	scope,
 	type
 `
@@ -46,9 +47,9 @@ type AddAccessTokenParams struct {
 	ClientID         string
 	UserID           string
 	Jwt              string
-	Revoked          bool
+	Revoked          int64
 	ExpiresInSeconds int64
-	IssuedAt         time.Time
+	IssuedAtUnix     int64
 	Scope            string
 	Type             string
 }
@@ -59,9 +60,9 @@ type AddAccessTokenRow struct {
 	ClientID         string
 	UserID           string
 	Jwt              string
-	Revoked          bool
+	Revoked          int64
 	ExpiresInSeconds int64
-	IssuedAt         time.Time
+	IssuedAtUnix     int64
 	Scope            string
 	Type             string
 }
@@ -75,7 +76,7 @@ func (q *Queries) AddAccessToken(ctx context.Context, arg AddAccessTokenParams) 
 		arg.Jwt,
 		arg.Revoked,
 		arg.ExpiresInSeconds,
-		arg.IssuedAt,
+		arg.IssuedAtUnix,
 		arg.Scope,
 		arg.Type,
 	)
@@ -88,7 +89,7 @@ func (q *Queries) AddAccessToken(ctx context.Context, arg AddAccessTokenParams) 
 		&i.Jwt,
 		&i.Revoked,
 		&i.ExpiresInSeconds,
-		&i.IssuedAt,
+		&i.IssuedAtUnix,
 		&i.Scope,
 		&i.Type,
 	)
@@ -96,10 +97,12 @@ func (q *Queries) AddAccessToken(ctx context.Context, arg AddAccessTokenParams) 
 }
 
 const addAppUser = `-- name: AddAppUser :one
+;
+
 INSERT INTO
-	wallabago.users (user_id, is_admin, username)
+	app_users (user_id, is_admin, username)
 VALUES
-	($1, $2, $3)
+	(?, ?, ?)
 RETURNING
 	user_id,
 	is_admin,
@@ -108,22 +111,24 @@ RETURNING
 
 type AddAppUserParams struct {
 	UserID   string
-	IsAdmin  bool
+	IsAdmin  int64
 	Username string
 }
 
-func (q *Queries) AddAppUser(ctx context.Context, arg AddAppUserParams) (*WallabagoUser, error) {
+func (q *Queries) AddAppUser(ctx context.Context, arg AddAppUserParams) (*AppUser, error) {
 	row := q.queryRow(ctx, q.addAppUserStmt, addAppUser, arg.UserID, arg.IsAdmin, arg.Username)
-	var i WallabagoUser
+	var i AppUser
 	err := row.Scan(&i.UserID, &i.IsAdmin, &i.Username)
 	return &i, err
 }
 
 const addClient = `-- name: AddClient :one
+;
+
 INSERT INTO
-	identity.clients (client_id, client_secret)
+	idp_clients (client_id, client_secret)
 VALUES
-	($1, $2)
+	(?, ?)
 RETURNING
 	client_id,
 	client_secret
@@ -134,25 +139,27 @@ type AddClientParams struct {
 	ClientSecret string
 }
 
-func (q *Queries) AddClient(ctx context.Context, arg AddClientParams) (*IdentityClient, error) {
+func (q *Queries) AddClient(ctx context.Context, arg AddClientParams) (*IdpClient, error) {
 	row := q.queryRow(ctx, q.addClientStmt, addClient, arg.ClientID, arg.ClientSecret)
-	var i IdentityClient
+	var i IdpClient
 	err := row.Scan(&i.ClientID, &i.ClientSecret)
 	return &i, err
 }
 
 const addEntry = `-- name: AddEntry :one
+;
+
 INSERT INTO
-	wallabago.entries (url, title, "content", owner_id, sha1)
+	app_entries (url, title, "content", owner_id, sha1)
 VALUES
-	($1, $2, $3, $4, $5)
+	(?, ?, ?, ?, ?)
 RETURNING
 	entry_id,
 	owner_id,
 	title,
 	url,
-	created_at,
-	retrieved_at,
+	created_at_unix,
+	retrieved_at_unix,
 	sha1,
 	content
 `
@@ -166,14 +173,14 @@ type AddEntryParams struct {
 }
 
 type AddEntryRow struct {
-	EntryID     int32
-	OwnerID     string
-	Title       string
-	Url         string
-	CreatedAt   time.Time
-	RetrievedAt sql.NullTime
-	Sha1        []byte
-	Content     string
+	EntryID         int64
+	OwnerID         string
+	Title           string
+	Url             string
+	CreatedAtUnix   int64
+	RetrievedAtUnix sql.NullInt64
+	Sha1            []byte
+	Content         string
 }
 
 func (q *Queries) AddEntry(ctx context.Context, arg AddEntryParams) (*AddEntryRow, error) {
@@ -190,8 +197,8 @@ func (q *Queries) AddEntry(ctx context.Context, arg AddEntryParams) (*AddEntryRo
 		&i.OwnerID,
 		&i.Title,
 		&i.Url,
-		&i.CreatedAt,
-		&i.RetrievedAt,
+		&i.CreatedAtUnix,
+		&i.RetrievedAtUnix,
 		&i.Sha1,
 		&i.Content,
 	)
@@ -199,10 +206,12 @@ func (q *Queries) AddEntry(ctx context.Context, arg AddEntryParams) (*AddEntryRo
 }
 
 const addIdentityUser = `-- name: AddIdentityUser :one
+;
+
 INSERT INTO
-	identity.users (user_id, username, email, password_hash)
+	idp_users (user_id, username, email, password_hash)
 VALUES
-	($1, $2, $3, $4)
+	(?, ?, ?, ?)
 RETURNING
 	user_id,
 	username,
@@ -217,14 +226,14 @@ type AddIdentityUserParams struct {
 	PasswordHash []byte
 }
 
-func (q *Queries) AddIdentityUser(ctx context.Context, arg AddIdentityUserParams) (*IdentityUser, error) {
+func (q *Queries) AddIdentityUser(ctx context.Context, arg AddIdentityUserParams) (*IdpUser, error) {
 	row := q.queryRow(ctx, q.addIdentityUserStmt, addIdentityUser,
 		arg.UserID,
 		arg.Username,
 		arg.Email,
 		arg.PasswordHash,
 	)
-	var i IdentityUser
+	var i IdpUser
 	err := row.Scan(
 		&i.UserID,
 		&i.Username,
@@ -235,10 +244,12 @@ func (q *Queries) AddIdentityUser(ctx context.Context, arg AddIdentityUserParams
 }
 
 const addRefreshToken = `-- name: AddRefreshToken :one
+;
+
 INSERT INTO
-	identity.refresh_tokens (token_id, client_id, jwt, revoked)
+	idp_refresh_tokens (token_id, client_id, jwt, revoked)
 VALUES
-	($1, $2, $3, $4)
+	(?, ?, ?, ?)
 RETURNING
 	token_id,
 	client_id,
@@ -250,17 +261,17 @@ type AddRefreshTokenParams struct {
 	TokenID  string
 	ClientID string
 	Jwt      string
-	Revoked  bool
+	Revoked  int64
 }
 
-func (q *Queries) AddRefreshToken(ctx context.Context, arg AddRefreshTokenParams) (*IdentityRefreshToken, error) {
+func (q *Queries) AddRefreshToken(ctx context.Context, arg AddRefreshTokenParams) (*IdpRefreshToken, error) {
 	row := q.queryRow(ctx, q.addRefreshTokenStmt, addRefreshToken,
 		arg.TokenID,
 		arg.ClientID,
 		arg.Jwt,
 		arg.Revoked,
 	)
-	var i IdentityRefreshToken
+	var i IdpRefreshToken
 	err := row.Scan(
 		&i.TokenID,
 		&i.ClientID,
@@ -271,10 +282,12 @@ func (q *Queries) AddRefreshToken(ctx context.Context, arg AddRefreshTokenParams
 }
 
 const assignUserRole = `-- name: AssignUserRole :exec
+;
+
 INSERT INTO
-	wallabago.user_roles (user_id, role_id)
+	app_user_roles (user_id, role_id)
 VALUES
-	($1, $2)
+	(?, ?)
 ON CONFLICT DO NOTHING
 `
 
@@ -289,9 +302,11 @@ func (q *Queries) AssignUserRole(ctx context.Context, arg AssignUserRoleParams) 
 }
 
 const deleteAccessTokenByID = `-- name: DeleteAccessTokenByID :exec
-DELETE FROM identity.access_tokens
+;
+
+DELETE FROM idp_access_tokens
 WHERE
-	token_id = $1
+	token_id = ?
 `
 
 func (q *Queries) DeleteAccessTokenByID(ctx context.Context, tokenID string) error {
@@ -300,9 +315,11 @@ func (q *Queries) DeleteAccessTokenByID(ctx context.Context, tokenID string) err
 }
 
 const deleteClientByID = `-- name: DeleteClientByID :exec
-DELETE FROM identity.clients
+;
+
+DELETE FROM idp_clients
 WHERE
-	client_id = $1
+	client_id = ?
 `
 
 func (q *Queries) DeleteClientByID(ctx context.Context, clientID string) error {
@@ -311,9 +328,11 @@ func (q *Queries) DeleteClientByID(ctx context.Context, clientID string) error {
 }
 
 const deleteIdentityUserByID = `-- name: DeleteIdentityUserByID :exec
-DELETE FROM identity.users
+;
+
+DELETE FROM idp_users
 WHERE
-	user_id = $1
+	user_id = ?
 `
 
 func (q *Queries) DeleteIdentityUserByID(ctx context.Context, userID string) error {
@@ -322,9 +341,11 @@ func (q *Queries) DeleteIdentityUserByID(ctx context.Context, userID string) err
 }
 
 const deleteRefreshTokenByID = `-- name: DeleteRefreshTokenByID :exec
-DELETE FROM identity.refresh_tokens
+;
+
+DELETE FROM idp_refresh_tokens
 WHERE
-	token_id = $1
+	token_id = ?
 `
 
 func (q *Queries) DeleteRefreshTokenByID(ctx context.Context, tokenID string) error {
@@ -333,6 +354,8 @@ func (q *Queries) DeleteRefreshTokenByID(ctx context.Context, tokenID string) er
 }
 
 const getAccessTokenByJWT = `-- name: GetAccessTokenByJWT :one
+;
+
 SELECT
 	token_id,
 	refresh_token_id,
@@ -341,13 +364,13 @@ SELECT
 	jwt,
 	revoked,
 	expires_in_seconds,
-	issued_at,
+	issued_at_unix,
 	scope,
 	type
 FROM
-	identity.access_tokens
+	idp_access_tokens
 WHERE
-	jwt = $1
+	jwt = ?
 LIMIT
 	1
 `
@@ -358,9 +381,9 @@ type GetAccessTokenByJWTRow struct {
 	ClientID         string
 	UserID           string
 	Jwt              string
-	Revoked          bool
+	Revoked          int64
 	ExpiresInSeconds int64
-	IssuedAt         time.Time
+	IssuedAtUnix     int64
 	Scope            string
 	Type             string
 }
@@ -376,7 +399,7 @@ func (q *Queries) GetAccessTokenByJWT(ctx context.Context, jwt string) (*GetAcce
 		&i.Jwt,
 		&i.Revoked,
 		&i.ExpiresInSeconds,
-		&i.IssuedAt,
+		&i.IssuedAtUnix,
 		&i.Scope,
 		&i.Type,
 	)
@@ -388,18 +411,18 @@ SELECT
 	condition_name,
 	satisfied
 FROM
-	wallabago.bootstrap
+	app_bootstrap
 `
 
-func (q *Queries) GetBoostrapConditions(ctx context.Context) ([]*WallabagoBootstrap, error) {
+func (q *Queries) GetBoostrapConditions(ctx context.Context) ([]*AppBootstrap, error) {
 	rows, err := q.query(ctx, q.getBoostrapConditionsStmt, getBoostrapConditions)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*WallabagoBootstrap
+	var items []*AppBootstrap
 	for rows.Next() {
-		var i WallabagoBootstrap
+		var i AppBootstrap
 		if err := rows.Scan(&i.ConditionName, &i.Satisfied); err != nil {
 			return nil, err
 		}
@@ -415,54 +438,58 @@ func (q *Queries) GetBoostrapConditions(ctx context.Context) ([]*WallabagoBootst
 }
 
 const getClientByID = `-- name: GetClientByID :one
+;
+
 SELECT
 	client_id,
 	client_secret
 FROM
-	identity.clients
+	idp_clients
 WHERE
-	client_id = $1
+	client_id = ?
 LIMIT
 	1
 `
 
-func (q *Queries) GetClientByID(ctx context.Context, clientID string) (*IdentityClient, error) {
+func (q *Queries) GetClientByID(ctx context.Context, clientID string) (*IdpClient, error) {
 	row := q.queryRow(ctx, q.getClientByIDStmt, getClientByID, clientID)
-	var i IdentityClient
+	var i IdpClient
 	err := row.Scan(&i.ClientID, &i.ClientSecret)
 	return &i, err
 }
 
 const getEntryByID = `-- name: GetEntryByID :one
+;
+
 SELECT
 	entry_id,
 	owner_id,
 	title,
 	url,
-	created_at,
-	retrieved_at,
+	created_at_unix,
+	retrieved_at_unix,
 	sha1,
 	content
 FROM
-	wallabago.entries
+	app_entries
 WHERE
-	entry_id = $1
+	entry_id = ?
 LIMIT
 	1
 `
 
 type GetEntryByIDRow struct {
-	EntryID     int32
-	OwnerID     string
-	Title       string
-	Url         string
-	CreatedAt   time.Time
-	RetrievedAt sql.NullTime
-	Sha1        []byte
-	Content     string
+	EntryID         int64
+	OwnerID         string
+	Title           string
+	Url             string
+	CreatedAtUnix   int64
+	RetrievedAtUnix sql.NullInt64
+	Sha1            []byte
+	Content         string
 }
 
-func (q *Queries) GetEntryByID(ctx context.Context, entryID int32) (*GetEntryByIDRow, error) {
+func (q *Queries) GetEntryByID(ctx context.Context, entryID int64) (*GetEntryByIDRow, error) {
 	row := q.queryRow(ctx, q.getEntryByIDStmt, getEntryByID, entryID)
 	var i GetEntryByIDRow
 	err := row.Scan(
@@ -470,8 +497,8 @@ func (q *Queries) GetEntryByID(ctx context.Context, entryID int32) (*GetEntryByI
 		&i.OwnerID,
 		&i.Title,
 		&i.Url,
-		&i.CreatedAt,
-		&i.RetrievedAt,
+		&i.CreatedAtUnix,
+		&i.RetrievedAtUnix,
 		&i.Sha1,
 		&i.Content,
 	)
@@ -479,20 +506,22 @@ func (q *Queries) GetEntryByID(ctx context.Context, entryID int32) (*GetEntryByI
 }
 
 const getEntryBySHA1 = `-- name: GetEntryBySHA1 :one
+;
+
 SELECT
 	entry_id,
 	owner_id,
 	title,
 	url,
-	created_at,
-	retrieved_at,
+	created_at_unix,
+	retrieved_at_unix,
 	sha1,
 	content
 FROM
-	wallabago.entries
+	app_entries
 WHERE
-	sha1 = $1
-	AND owner_id = $2
+	sha1 = ?
+	AND owner_id = ?
 LIMIT
 	1
 `
@@ -503,14 +532,14 @@ type GetEntryBySHA1Params struct {
 }
 
 type GetEntryBySHA1Row struct {
-	EntryID     int32
-	OwnerID     string
-	Title       string
-	Url         string
-	CreatedAt   time.Time
-	RetrievedAt sql.NullTime
-	Sha1        []byte
-	Content     string
+	EntryID         int64
+	OwnerID         string
+	Title           string
+	Url             string
+	CreatedAtUnix   int64
+	RetrievedAtUnix sql.NullInt64
+	Sha1            []byte
+	Content         string
 }
 
 func (q *Queries) GetEntryBySHA1(ctx context.Context, arg GetEntryBySHA1Params) (*GetEntryBySHA1Row, error) {
@@ -521,8 +550,8 @@ func (q *Queries) GetEntryBySHA1(ctx context.Context, arg GetEntryBySHA1Params) 
 		&i.OwnerID,
 		&i.Title,
 		&i.Url,
-		&i.CreatedAt,
-		&i.RetrievedAt,
+		&i.CreatedAtUnix,
+		&i.RetrievedAtUnix,
 		&i.Sha1,
 		&i.Content,
 	)
@@ -530,17 +559,19 @@ func (q *Queries) GetEntryBySHA1(ctx context.Context, arg GetEntryBySHA1Params) 
 }
 
 const getEntryOwnerID = `-- name: GetEntryOwnerID :one
+;
+
 SELECT
 	owner_id
 FROM
-	wallabago.entries
+	app_entries
 WHERE
-	entry_id = $1
+	entry_id = ?
 LIMIT
 	1
 `
 
-func (q *Queries) GetEntryOwnerID(ctx context.Context, entryID int32) (string, error) {
+func (q *Queries) GetEntryOwnerID(ctx context.Context, entryID int64) (string, error) {
 	row := q.queryRow(ctx, q.getEntryOwnerIDStmt, getEntryOwnerID, entryID)
 	var owner_id string
 	err := row.Scan(&owner_id)
@@ -548,22 +579,24 @@ func (q *Queries) GetEntryOwnerID(ctx context.Context, entryID int32) (string, e
 }
 
 const getIdentityUserByUsername = `-- name: GetIdentityUserByUsername :one
+;
+
 SELECT
 	user_id,
 	username,
 	email,
 	password_hash
 FROM
-	identity.users
+	idp_users
 WHERE
-	username = $1
+	username = ?
 LIMIT
 	1
 `
 
-func (q *Queries) GetIdentityUserByUsername(ctx context.Context, username string) (*IdentityUser, error) {
+func (q *Queries) GetIdentityUserByUsername(ctx context.Context, username string) (*IdpUser, error) {
 	row := q.queryRow(ctx, q.getIdentityUserByUsernameStmt, getIdentityUserByUsername, username)
-	var i IdentityUser
+	var i IdpUser
 	err := row.Scan(
 		&i.UserID,
 		&i.Username,
@@ -574,22 +607,24 @@ func (q *Queries) GetIdentityUserByUsername(ctx context.Context, username string
 }
 
 const getRefreshTokenByJWT = `-- name: GetRefreshTokenByJWT :one
+;
+
 SELECT
 	token_id,
 	client_id,
 	jwt,
 	revoked
 FROM
-	identity.refresh_tokens
+	idp_refresh_tokens
 WHERE
-	jwt = $1
+	jwt = ?
 LIMIT
 	1
 `
 
-func (q *Queries) GetRefreshTokenByJWT(ctx context.Context, jwt string) (*IdentityRefreshToken, error) {
+func (q *Queries) GetRefreshTokenByJWT(ctx context.Context, jwt string) (*IdpRefreshToken, error) {
 	row := q.queryRow(ctx, q.getRefreshTokenByJWTStmt, getRefreshTokenByJWT, jwt)
-	var i IdentityRefreshToken
+	var i IdpRefreshToken
 	err := row.Scan(
 		&i.TokenID,
 		&i.ClientID,
@@ -600,6 +635,8 @@ func (q *Queries) GetRefreshTokenByJWT(ctx context.Context, jwt string) (*Identi
 }
 
 const getUserMaxScope = `-- name: GetUserMaxScope :one
+;
+
 SELECT
 	COALESCE(
 		MAX(
@@ -611,14 +648,14 @@ SELECT
 			END
 		),
 		0
-	)::INT AS scope_level
+	) AS scope_level
 FROM
-	wallabago.user_roles ur
-	JOIN wallabago.role_permissions rp ON ur.role_id = rp.role_id
+	app_user_roles ur
+	JOIN app_role_permissions rp ON ur.role_id = rp.role_id
 WHERE
-	ur.user_id = $1
-	AND rp.resource_type = $2
-	AND rp.operation = $3
+	ur.user_id = ?
+	AND rp.resource_type = ?
+	AND rp.operation = ?
 `
 
 type GetUserMaxScopeParams struct {
@@ -630,39 +667,43 @@ type GetUserMaxScopeParams struct {
 // Returns the highest scope level for a user's permission on a resource type and operation.
 // COALESCE returns 0 if MAX is NULL (when user has no roles or no matching permissions).
 // Scope levels: 0 = none/no permission, 1 = none, 2 = own, 3 = global
-func (q *Queries) GetUserMaxScope(ctx context.Context, arg GetUserMaxScopeParams) (int32, error) {
+func (q *Queries) GetUserMaxScope(ctx context.Context, arg GetUserMaxScopeParams) (interface{}, error) {
 	row := q.queryRow(ctx, q.getUserMaxScopeStmt, getUserMaxScope, arg.UserID, arg.ResourceType, arg.Operation)
-	var scope_level int32
+	var scope_level interface{}
 	err := row.Scan(&scope_level)
 	return scope_level, err
 }
 
 const markBootstrapConditionSatisfied = `-- name: MarkBootstrapConditionSatisfied :one
+;
+
 INSERT INTO
-	wallabago.bootstrap (condition_name, satisfied)
+	app_bootstrap (condition_name, satisfied)
 VALUES
-	($1, TRUE)
-ON CONFLICT ON CONSTRAINT bootstrap_pkey DO UPDATE
+	(?, 1)
+ON CONFLICT (condition_name) DO UPDATE
 SET
-	satisfied = TRUE
+	satisfied = 1
 RETURNING
 	condition_name,
 	satisfied
 `
 
-func (q *Queries) MarkBootstrapConditionSatisfied(ctx context.Context, conditionName string) (*WallabagoBootstrap, error) {
+func (q *Queries) MarkBootstrapConditionSatisfied(ctx context.Context, conditionName string) (*AppBootstrap, error) {
 	row := q.queryRow(ctx, q.markBootstrapConditionSatisfiedStmt, markBootstrapConditionSatisfied, conditionName)
-	var i WallabagoBootstrap
+	var i AppBootstrap
 	err := row.Scan(&i.ConditionName, &i.Satisfied)
 	return &i, err
 }
 
 const revokeAccessTokenByID = `-- name: RevokeAccessTokenByID :one
-UPDATE identity.access_tokens
+;
+
+UPDATE idp_access_tokens
 SET
-	revoked = TRUE
+	revoked = 1
 WHERE
-	token_id = $1
+	token_id = ?
 RETURNING
 	token_id,
 	refresh_token_id,
@@ -671,7 +712,7 @@ RETURNING
 	jwt,
 	revoked,
 	expires_in_seconds,
-	issued_at,
+	issued_at_unix,
 	scope,
 	type
 `
@@ -682,9 +723,9 @@ type RevokeAccessTokenByIDRow struct {
 	ClientID         string
 	UserID           string
 	Jwt              string
-	Revoked          bool
+	Revoked          int64
 	ExpiresInSeconds int64
-	IssuedAt         time.Time
+	IssuedAtUnix     int64
 	Scope            string
 	Type             string
 }
@@ -700,7 +741,7 @@ func (q *Queries) RevokeAccessTokenByID(ctx context.Context, tokenID string) (*R
 		&i.Jwt,
 		&i.Revoked,
 		&i.ExpiresInSeconds,
-		&i.IssuedAt,
+		&i.IssuedAtUnix,
 		&i.Scope,
 		&i.Type,
 	)
@@ -708,11 +749,13 @@ func (q *Queries) RevokeAccessTokenByID(ctx context.Context, tokenID string) (*R
 }
 
 const revokeRefreshTokenByID = `-- name: RevokeRefreshTokenByID :one
-UPDATE identity.refresh_tokens
+;
+
+UPDATE idp_refresh_tokens
 SET
-	revoked = TRUE
+	revoked = 1
 WHERE
-	token_id = $1
+	token_id = ?
 RETURNING
 	token_id,
 	client_id,
@@ -720,9 +763,9 @@ RETURNING
 	revoked
 `
 
-func (q *Queries) RevokeRefreshTokenByID(ctx context.Context, tokenID string) (*IdentityRefreshToken, error) {
+func (q *Queries) RevokeRefreshTokenByID(ctx context.Context, tokenID string) (*IdpRefreshToken, error) {
 	row := q.queryRow(ctx, q.revokeRefreshTokenByIDStmt, revokeRefreshTokenByID, tokenID)
-	var i IdentityRefreshToken
+	var i IdpRefreshToken
 	err := row.Scan(
 		&i.TokenID,
 		&i.ClientID,

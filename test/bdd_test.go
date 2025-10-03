@@ -5,24 +5,22 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
-	stderrors "errors"
 	nethttp "net/http"
 
 	"github.com/andriihomiak/wallabago/internal/app"
 	"github.com/andriihomiak/wallabago/internal/http"
 	"github.com/cucumber/godog"
 	"github.com/pkg/errors"
-	"github.com/testcontainers/testcontainers-go/modules/compose"
-	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 type testInfra struct {
 	cancelContext context.CancelFunc
-	stack         *compose.DockerCompose
 	server        *http.Server
+	dbPath        string
 }
 
 func newTestInfra() *testInfra {
@@ -32,26 +30,17 @@ func newTestInfra() *testInfra {
 func (ti *testInfra) setup(ctx context.Context, cancelContext context.CancelFunc) error {
 	ti.cancelContext = cancelContext
 
-	// run compose
-	stack, err := compose.NewDockerComposeWith(
-		compose.WithStackFiles("../deployments/docker-compose/docker-compose.yaml"),
-	)
-	if err != nil {
-		return err
-	}
-	ti.stack = stack
-	err = stack.WaitForService("migrations", wait.ForExit()).Up(ctx, compose.RunServices("postgres", "migrations"))
-	if err != nil {
-		return err
-	}
+	// Create temporary database for testing
+	tempDir := os.TempDir()
+	dbPath := filepath.Join(tempDir, fmt.Sprintf("wallabago-test-%d.db", time.Now().UnixNano()))
+	ti.dbPath = dbPath
 
 	addr := "0.0.0.0:29999"
 
 	server, err := http.NewServer(ctx, app.Config{
 		Addr:                   addr,
 		InstrumentationEnabled: false,
-		// taken from compose
-		DBConnectionString:     "postgresql://wallabago-api:wallabago@localhost:25432/wallabago-db?sslmode=disable&application_name=wallabago-api-client",
+		DBPath:                 dbPath,
 		BootstrapClientID:      "web",
 		BootstrapClientSecret:  "web",
 		BootstrapAdminPassword: "admin",
@@ -104,17 +93,26 @@ func (ti *testInfra) setup(ctx context.Context, cancelContext context.CancelFunc
 	}
 }
 
-func (ti *testInfra) teardown(cause error) error {
+func (ti *testInfra) teardown(cause error) {
 	slog.Info("Tearing down test infra", "cause", cause)
 
 	slog.Info("Cancelling context")
 	ti.cancelContext()
 	slog.Info("Context cancelled")
 
-	err := ti.stack.Down(context.TODO())
+	// Clean up test database
+	if ti.dbPath != "" {
+		slog.Info("Removing test database", "path", ti.dbPath)
+		err := os.Remove(ti.dbPath)
+		if err != nil && !os.IsNotExist(err) {
+			slog.Warn("Failed to remove test database", "err", err)
+		}
+		// Also remove WAL files if they exist
+		os.Remove(ti.dbPath + "-shm")
+		os.Remove(ti.dbPath + "-wal")
+	}
 
 	slog.Info("Infra tear down finished")
-	return err
 }
 
 type serverAddrKey struct{}
@@ -138,15 +136,10 @@ func TestBDDScenarios(t *testing.T) {
 	infra := newTestInfra()
 	err := infra.setup(infraCtx, cancelFunc)
 	if err != nil {
-		teardownErr := infra.teardown(err)
-		t.Fatal(stderrors.Join(err, teardownErr))
+		infra.teardown(err)
+		t.Fatal(err)
 	}
-	defer func() {
-		err := infra.teardown(nil)
-		if err != nil {
-			slog.Warn("Infra teardown error", "err", err)
-		}
-	}()
+	defer infra.teardown(nil)
 
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, serverAddrKey{}, infra.server.App().Addr())
