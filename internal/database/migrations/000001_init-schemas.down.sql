@@ -1,2 +1,1 @@
-DROP SCHEMA IF EXISTS identity;
-DROP SCHEMA IF EXISTS wallabago;
+-- No-op migration

@@ -12,23 +12,23 @@ import (
 	"github.com/pkg/errors"
 )
 
-type PostgreSQLStorage struct {
+type SQLiteStorage struct {
 	pool    *sql.DB
 	queries *database.Queries
 }
 
-func NewPostreSQLStorage(pool *sql.DB) *PostgreSQLStorage {
-	return &PostgreSQLStorage{
+func NewSQLiteStorage(pool *sql.DB) *SQLiteStorage {
+	return &SQLiteStorage{
 		pool:    pool,
 		queries: database.New(pool),
 	}
 }
 
-func (s *PostgreSQLStorage) Begin(ctx context.Context) (*sql.Tx, error) {
+func (s *SQLiteStorage) Begin(ctx context.Context) (*sql.Tx, error) {
 	return s.pool.BeginTx(ctx, nil)
 }
 
-func (s *PostgreSQLStorage) GetBootstrapConditions(ctx context.Context, tx *sql.Tx) ([]core.Condition, error) {
+func (s *SQLiteStorage) GetBootstrapConditions(ctx context.Context, tx *sql.Tx) ([]core.Condition, error) {
 	q := s.queries.WithTx(tx)
 	res, err := q.GetBoostrapConditions(ctx)
 	if err != nil {
@@ -38,13 +38,13 @@ func (s *PostgreSQLStorage) GetBootstrapConditions(ctx context.Context, tx *sql.
 	for _, condition := range res {
 		conditions = append(conditions, core.Condition{
 			Name:      core.ConditionName(condition.ConditionName),
-			Satisfied: condition.Satisfied,
+			Satisfied: condition.Satisfied != 0,
 		})
 	}
 	return conditions, nil
 }
 
-func (s *PostgreSQLStorage) MarkBootstrapConditionSatisfied(
+func (s *SQLiteStorage) MarkBootstrapConditionSatisfied(
 	ctx context.Context, tx *sql.Tx, condition core.ConditionName,
 ) error {
 	q := s.queries.WithTx(tx)
@@ -55,7 +55,7 @@ func (s *PostgreSQLStorage) MarkBootstrapConditionSatisfied(
 	return nil
 }
 
-func (s *PostgreSQLStorage) AddClient(ctx context.Context, tx *sql.Tx, client core.Client) error {
+func (s *SQLiteStorage) AddClient(ctx context.Context, tx *sql.Tx, client core.Client) error {
 	q := s.queries.WithTx(tx)
 	_, err := q.AddClient(ctx, database.AddClientParams{
 		ClientID:     client.ID,
@@ -67,7 +67,7 @@ func (s *PostgreSQLStorage) AddClient(ctx context.Context, tx *sql.Tx, client co
 	return nil
 }
 
-func (s *PostgreSQLStorage) GetClientByID(ctx context.Context, tx *sql.Tx, id string) (*core.Client, error) {
+func (s *SQLiteStorage) GetClientByID(ctx context.Context, tx *sql.Tx, id string) (*core.Client, error) {
 	q := s.queries.WithTx(tx)
 	result, err := q.GetClientByID(ctx, id)
 	if err != nil {
@@ -79,7 +79,7 @@ func (s *PostgreSQLStorage) GetClientByID(ctx context.Context, tx *sql.Tx, id st
 	}, nil
 }
 
-func (s *PostgreSQLStorage) DeleteClientByID(ctx context.Context, tx *sql.Tx, id string) error {
+func (s *SQLiteStorage) DeleteClientByID(ctx context.Context, tx *sql.Tx, id string) error {
 	q := s.queries.WithTx(tx)
 	err := q.DeleteClientByID(ctx, id)
 	if err != nil {
@@ -88,21 +88,21 @@ func (s *PostgreSQLStorage) DeleteClientByID(ctx context.Context, tx *sql.Tx, id
 	return nil
 }
 
-func (s *PostgreSQLStorage) AddAccessToken(ctx context.Context, tx *sql.Tx, refreshTokenID string, token core.AccessToken) error {
+func (s *SQLiteStorage) AddAccessToken(ctx context.Context, tx *sql.Tx, refreshTokenID string, token core.AccessToken) error {
 	q := s.queries.WithTx(tx)
 	_, err := q.AddAccessToken(ctx, database.AddAccessTokenParams{
 		TokenID:  token.ID,
 		ClientID: token.ClientID,
 		Jwt:      string(token.Token),
 		UserID:   token.UserID,
-		Revoked:  token.Revoked,
+		Revoked:  boolToInt64(token.Revoked),
 		RefreshTokenID: sql.NullString{
 			Valid:  refreshTokenID != "",
 			String: refreshTokenID,
 		},
 		Type:             string(token.TokenType),
 		Scope:            string(token.Scope),
-		IssuedAt:         token.IssuedAt,
+		IssuedAtUnix:     token.IssuedAt.Unix(),
 		ExpiresInSeconds: token.ExpiresInSeconds,
 	})
 	if err != nil {
@@ -111,26 +111,26 @@ func (s *PostgreSQLStorage) AddAccessToken(ctx context.Context, tx *sql.Tx, refr
 	return nil
 }
 
-func (s *PostgreSQLStorage) GetAccessTokenByJWT(ctx context.Context, tx *sql.Tx, jwt core.JWT) (*core.AccessToken, error) {
+func (s *SQLiteStorage) GetAccessTokenByJWT(ctx context.Context, tx *sql.Tx, jwt core.JWT) (*core.AccessToken, error) {
 	q := s.queries.WithTx(tx)
 	result, err := q.GetAccessTokenByJWT(ctx, string(jwt))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 	return &core.AccessToken{
-		ID:               result.ClientID,
+		ID:               result.TokenID,
 		Token:            core.JWT(result.Jwt),
 		ExpiresInSeconds: result.ExpiresInSeconds,
 		UserID:           result.UserID,
 		Scope:            core.Scope(result.Scope),
-		IssuedAt:         result.IssuedAt,
+		IssuedAt:         time.Unix(result.IssuedAtUnix, 0),
 		TokenType:        core.TokenType(result.Type),
 		ClientID:         result.ClientID,
-		Revoked:          result.Revoked,
+		Revoked:          result.Revoked != 0,
 	}, nil
 }
 
-func (s *PostgreSQLStorage) RevokeAccessTokenByID(ctx context.Context, tx *sql.Tx, id string) error {
+func (s *SQLiteStorage) RevokeAccessTokenByID(ctx context.Context, tx *sql.Tx, id string) error {
 	q := s.queries.WithTx(tx)
 	_, err := q.RevokeAccessTokenByID(ctx, id)
 	if err != nil {
@@ -139,7 +139,7 @@ func (s *PostgreSQLStorage) RevokeAccessTokenByID(ctx context.Context, tx *sql.T
 	return nil
 }
 
-func (s *PostgreSQLStorage) DeleteAccessTokenByID(ctx context.Context, tx *sql.Tx, id string) error {
+func (s *SQLiteStorage) DeleteAccessTokenByID(ctx context.Context, tx *sql.Tx, id string) error {
 	q := s.queries.WithTx(tx)
 	err := q.DeleteAccessTokenByID(ctx, id)
 	if err != nil {
@@ -148,13 +148,13 @@ func (s *PostgreSQLStorage) DeleteAccessTokenByID(ctx context.Context, tx *sql.T
 	return nil
 }
 
-func (s *PostgreSQLStorage) AddRefreshToken(ctx context.Context, tx *sql.Tx, token core.RefreshToken) error {
+func (s *SQLiteStorage) AddRefreshToken(ctx context.Context, tx *sql.Tx, token core.RefreshToken) error {
 	q := s.queries.WithTx(tx)
 	_, err := q.AddRefreshToken(ctx, database.AddRefreshTokenParams{
 		TokenID:  token.ID,
 		Jwt:      string(token.Token),
 		ClientID: token.ClientID,
-		Revoked:  token.Revoked,
+		Revoked:  boolToInt64(token.Revoked),
 	})
 	if err != nil {
 		return errors.WithStack(err)
@@ -162,21 +162,21 @@ func (s *PostgreSQLStorage) AddRefreshToken(ctx context.Context, tx *sql.Tx, tok
 	return nil
 }
 
-func (s *PostgreSQLStorage) GetRefreshTokenByJWT(ctx context.Context, tx *sql.Tx, refreshToken core.JWT) (*core.RefreshToken, error) {
+func (s *SQLiteStorage) GetRefreshTokenByJWT(ctx context.Context, tx *sql.Tx, refreshToken core.JWT) (*core.RefreshToken, error) {
 	q := s.queries.WithTx(tx)
 	result, err := q.GetRefreshTokenByJWT(ctx, string(refreshToken))
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 	return &core.RefreshToken{
-		ID:       result.ClientID,
+		ID:       result.TokenID,
 		Token:    core.JWT(result.Jwt),
 		ClientID: result.ClientID,
-		Revoked:  result.Revoked,
+		Revoked:  result.Revoked != 0,
 	}, nil
 }
 
-func (s *PostgreSQLStorage) RevokeRefreshTokenByID(ctx context.Context, tx *sql.Tx, id string) error {
+func (s *SQLiteStorage) RevokeRefreshTokenByID(ctx context.Context, tx *sql.Tx, id string) error {
 	q := s.queries.WithTx(tx)
 	_, err := q.RevokeRefreshTokenByID(ctx, id)
 	if err != nil {
@@ -185,7 +185,7 @@ func (s *PostgreSQLStorage) RevokeRefreshTokenByID(ctx context.Context, tx *sql.
 	return nil
 }
 
-func (s *PostgreSQLStorage) DeleteRefreshTokenByID(ctx context.Context, tx *sql.Tx, id string) error {
+func (s *SQLiteStorage) DeleteRefreshTokenByID(ctx context.Context, tx *sql.Tx, id string) error {
 	q := s.queries.WithTx(tx)
 	err := q.DeleteRefreshTokenByID(ctx, id)
 	if err != nil {
@@ -194,7 +194,7 @@ func (s *PostgreSQLStorage) DeleteRefreshTokenByID(ctx context.Context, tx *sql.
 	return nil
 }
 
-func (s *PostgreSQLStorage) AddUserInfo(ctx context.Context, tx *sql.Tx, user core.UserInfo) error {
+func (s *SQLiteStorage) AddUserInfo(ctx context.Context, tx *sql.Tx, user core.UserInfo) error {
 	q := s.queries.WithTx(tx)
 	_, err := q.AddIdentityUser(ctx, database.AddIdentityUserParams{
 		UserID:       user.ID,
@@ -208,7 +208,7 @@ func (s *PostgreSQLStorage) AddUserInfo(ctx context.Context, tx *sql.Tx, user co
 	return nil
 }
 
-func (s *PostgreSQLStorage) GetUserInfoByUsername(ctx context.Context, tx *sql.Tx, username string) (*core.UserInfo, error) {
+func (s *SQLiteStorage) GetUserInfoByUsername(ctx context.Context, tx *sql.Tx, username string) (*core.UserInfo, error) {
 	q := s.queries.WithTx(tx)
 	result, err := q.GetIdentityUserByUsername(ctx, username)
 	if err != nil {
@@ -222,7 +222,7 @@ func (s *PostgreSQLStorage) GetUserInfoByUsername(ctx context.Context, tx *sql.T
 	}, nil
 }
 
-func (s *PostgreSQLStorage) DeleteUserInfoByID(ctx context.Context, tx *sql.Tx, id string) error {
+func (s *SQLiteStorage) DeleteUserInfoByID(ctx context.Context, tx *sql.Tx, id string) error {
 	q := s.queries.WithTx(tx)
 	err := q.DeleteIdentityUserByID(ctx, id)
 	if err != nil {
@@ -231,11 +231,11 @@ func (s *PostgreSQLStorage) DeleteUserInfoByID(ctx context.Context, tx *sql.Tx, 
 	return nil
 }
 
-func (s *PostgreSQLStorage) AddUser(ctx context.Context, tx *sql.Tx, user core.User) error {
+func (s *SQLiteStorage) AddUser(ctx context.Context, tx *sql.Tx, user core.User) error {
 	q := s.queries.WithTx(tx)
 	_, err := q.AddAppUser(ctx, database.AddAppUserParams{
 		UserID:   user.ID,
-		IsAdmin:  user.IsAdmin,
+		IsAdmin:  boolToInt64(user.IsAdmin),
 		Username: user.Username,
 	})
 	if err != nil {
@@ -244,7 +244,7 @@ func (s *PostgreSQLStorage) AddUser(ctx context.Context, tx *sql.Tx, user core.U
 	return nil
 }
 
-func (s *PostgreSQLStorage) AddEntry(ctx context.Context, tx *sql.Tx, entry core.Entry) (*core.Entry, error) {
+func (s *SQLiteStorage) AddEntry(ctx context.Context, tx *sql.Tx, entry core.Entry) (*core.Entry, error) {
 	q := s.queries.WithTx(tx)
 	result, err := q.AddEntry(ctx, database.AddEntryParams{
 		Url:     entry.URL.String(),
@@ -257,10 +257,15 @@ func (s *PostgreSQLStorage) AddEntry(ctx context.Context, tx *sql.Tx, entry core
 		return nil, errors.WithStack(err)
 	}
 	entry.ID = result.EntryID
+	entry.CreatedAt = time.Unix(result.CreatedAtUnix, 0)
+	if result.RetrievedAtUnix.Valid {
+		t := time.Unix(result.RetrievedAtUnix.Int64, 0)
+		entry.RetrievedAt = &t
+	}
 	return &entry, nil
 }
 
-func (s *PostgreSQLStorage) GetEntryBySHA1(ctx context.Context, tx *sql.Tx, ownerID string, sha1 []byte) (*core.Entry, error) {
+func (s *SQLiteStorage) GetEntryBySHA1(ctx context.Context, tx *sql.Tx, ownerID string, sha1 []byte) (*core.Entry, error) {
 	q := s.queries.WithTx(tx)
 	entry, err := q.GetEntryBySHA1(ctx, database.GetEntryBySHA1Params{
 		Sha1:    sha1,
@@ -273,10 +278,13 @@ func (s *PostgreSQLStorage) GetEntryBySHA1(ctx context.Context, tx *sql.Tx, owne
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+
 	var retrievedAt *time.Time
-	if entry.RetrievedAt.Valid {
-		retrievedAt = &entry.RetrievedAt.Time
+	if entry.RetrievedAtUnix.Valid {
+		t := time.Unix(entry.RetrievedAtUnix.Int64, 0)
+		retrievedAt = &t
 	}
+
 	return &core.Entry{
 		ID:          entry.EntryID,
 		URL:         *url,
@@ -284,12 +292,12 @@ func (s *PostgreSQLStorage) GetEntryBySHA1(ctx context.Context, tx *sql.Tx, owne
 		OwnerID:     entry.OwnerID,
 		Content:     entry.Content,
 		SHA1:        entry.Sha1,
-		CreatedAt:   entry.CreatedAt,
+		CreatedAt:   time.Unix(entry.CreatedAtUnix, 0),
 		RetrievedAt: retrievedAt,
 	}, nil
 }
 
-func (s *PostgreSQLStorage) EntryExistsBySHA1(ctx context.Context, tx *sql.Tx, ownerID string, sha1 []byte) (bool, error) {
+func (s *SQLiteStorage) EntryExistsBySHA1(ctx context.Context, tx *sql.Tx, ownerID string, sha1 []byte) (bool, error) {
 	q := s.queries.WithTx(tx)
 	_, err := q.GetEntryBySHA1(ctx, database.GetEntryBySHA1Params{
 		Sha1:    sha1,
@@ -304,7 +312,7 @@ func (s *PostgreSQLStorage) EntryExistsBySHA1(ctx context.Context, tx *sql.Tx, o
 	return true, nil
 }
 
-func (s *PostgreSQLStorage) GetEntryByID(ctx context.Context, tx *sql.Tx, entryID int32) (*core.Entry, error) {
+func (s *SQLiteStorage) GetEntryByID(ctx context.Context, tx *sql.Tx, entryID int64) (*core.Entry, error) {
 	q := s.queries.WithTx(tx)
 
 	entry, err := q.GetEntryByID(ctx, entryID)
@@ -315,10 +323,13 @@ func (s *PostgreSQLStorage) GetEntryByID(ctx context.Context, tx *sql.Tx, entryI
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+
 	var retrievedAt *time.Time
-	if entry.RetrievedAt.Valid {
-		retrievedAt = &entry.RetrievedAt.Time
+	if entry.RetrievedAtUnix.Valid {
+		t := time.Unix(entry.RetrievedAtUnix.Int64, 0)
+		retrievedAt = &t
 	}
+
 	return &core.Entry{
 		ID:          entry.EntryID,
 		URL:         *url,
@@ -326,12 +337,12 @@ func (s *PostgreSQLStorage) GetEntryByID(ctx context.Context, tx *sql.Tx, entryI
 		OwnerID:     entry.OwnerID,
 		Content:     entry.Content,
 		SHA1:        entry.Sha1,
-		CreatedAt:   entry.CreatedAt,
+		CreatedAt:   time.Unix(entry.CreatedAtUnix, 0),
 		RetrievedAt: retrievedAt,
 	}, nil
 }
 
-func (s *PostgreSQLStorage) GetUserMaxScope(
+func (s *SQLiteStorage) GetUserMaxScope(
 	ctx context.Context, tx *sql.Tx,
 	userID string, subject policy.Subject, operation policy.Operation,
 ) (policy.Scope, error) {
@@ -346,7 +357,18 @@ func (s *PostgreSQLStorage) GetUserMaxScope(
 	}
 
 	// Convert scope level to scope type
-	switch scopeLevel {
+	// The result is interface{} from sqlc, need to convert to int64
+	var level int64
+	switch v := scopeLevel.(type) {
+	case int64:
+		level = v
+	case int:
+		level = int64(v)
+	default:
+		level = 0
+	}
+
+	switch level {
 	case 3:
 		return policy.ScopeGlobal, nil
 	case 2:
@@ -358,7 +380,7 @@ func (s *PostgreSQLStorage) GetUserMaxScope(
 	}
 }
 
-func (s *PostgreSQLStorage) GetEntryOwnerID(ctx context.Context, tx *sql.Tx, entryID int32) (string, error) {
+func (s *SQLiteStorage) GetEntryOwnerID(ctx context.Context, tx *sql.Tx, entryID int64) (string, error) {
 	q := s.queries.WithTx(tx)
 	ownerID, err := q.GetEntryOwnerID(ctx, entryID)
 	if err != nil {
@@ -367,7 +389,7 @@ func (s *PostgreSQLStorage) GetEntryOwnerID(ctx context.Context, tx *sql.Tx, ent
 	return ownerID, nil
 }
 
-func (s *PostgreSQLStorage) AssignUserRole(ctx context.Context, tx *sql.Tx, userID string, role policy.Role) error {
+func (s *SQLiteStorage) AssignUserRole(ctx context.Context, tx *sql.Tx, userID string, role policy.Role) error {
 	q := s.queries.WithTx(tx)
 	err := q.AssignUserRole(ctx, database.AssignUserRoleParams{
 		UserID: userID,
@@ -377,4 +399,13 @@ func (s *PostgreSQLStorage) AssignUserRole(ctx context.Context, tx *sql.Tx, user
 		return errors.WithStack(err)
 	}
 	return nil
+}
+
+// Helper functions
+
+func boolToInt64(b bool) int64 {
+	if b {
+		return 1
+	}
+	return 0
 }

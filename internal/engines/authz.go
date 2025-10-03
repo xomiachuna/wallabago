@@ -99,11 +99,11 @@ func (e *HierarchicalAuthorizationEngine) CheckPolicy(ctx context.Context, tx *s
 func (e *HierarchicalAuthorizationEngine) lookupResourceOwner(ctx context.Context, tx *sql.Tx, subject policy.Subject, resourceID any) (string, error) {
 	switch subject {
 	case policy.SubjectEntries:
-		entryID, ok := resourceID.(int32)
+		entryID, ok := resourceID.(int64)
 		if !ok {
 			slog.ErrorContext(ctx, "invalid entry ID type",
 				"resourceID", resourceID,
-				"expectedType", "int32")
+				"expectedType", "int64")
 			return "", policy.ErrForbidden
 		}
 		return e.rbacStorage.GetEntryOwnerID(ctx, tx, entryID)
@@ -133,5 +133,5 @@ type RBACStorage interface {
 	GetUserMaxScope(ctx context.Context, tx *sql.Tx, userID string, subject policy.Subject, operation policy.Operation) (policy.Scope, error)
 
 	// Resource owner lookups
-	GetEntryOwnerID(ctx context.Context, tx *sql.Tx, entryID int32) (string, error)
+	GetEntryOwnerID(ctx context.Context, tx *sql.Tx, entryID int64) (string, error)
 }

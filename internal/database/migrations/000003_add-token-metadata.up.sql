@@ -1,19 +1,15 @@
--- Add issued_at
-ALTER TABLE identity.access_tokens
-ADD COLUMN IF NOT EXISTS issued_at TIMESTAMP WITH TIME ZONE NOT NULL
-;
+-- Add issued_at (stored as Unix timestamp in seconds)
+ALTER TABLE idp_access_tokens
+ADD COLUMN issued_at_unix INTEGER NOT NULL DEFAULT (unixepoch());
 
 -- Add expires_in
-ALTER TABLE identity.access_tokens
-ADD COLUMN IF NOT EXISTS expires_in_seconds BIGINT CHECK (expires_in_seconds > 0) NOT NULL
-;
+ALTER TABLE idp_access_tokens
+ADD COLUMN expires_in_seconds INTEGER CHECK (expires_in_seconds > 0) NOT NULL DEFAULT 3600;
 
 -- Add scope
-ALTER TABLE identity.access_tokens
-ADD COLUMN IF NOT EXISTS scope TEXT NOT NULL
-;
+ALTER TABLE idp_access_tokens
+ADD COLUMN scope TEXT NOT NULL DEFAULT '';
 
 -- Add token_type
-ALTER TABLE identity.access_tokens
-ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'bearer'
-;
+ALTER TABLE idp_access_tokens
+ADD COLUMN type TEXT NOT NULL DEFAULT 'bearer';

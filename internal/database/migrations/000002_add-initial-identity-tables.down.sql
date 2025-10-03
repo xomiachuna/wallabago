@@ -1,11 +1,4 @@
-DROP TABLE IF EXISTS identity.access_tokens CASCADE
-;
-
-DROP TABLE IF EXISTS identity.refresh_tokens CASCADE
-;
-
-DROP TABLE IF EXISTS identity.clients CASCADE
-;
-
-DROP TABLE IF EXISTS identity.users CASCADE
-;
+DROP TABLE IF EXISTS idp_access_tokens;
+DROP TABLE IF EXISTS idp_refresh_tokens;
+DROP TABLE IF EXISTS idp_clients;
+DROP TABLE IF EXISTS idp_users;

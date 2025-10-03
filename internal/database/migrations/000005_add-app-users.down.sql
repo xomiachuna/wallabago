@@ -1,2 +1,1 @@
-DROP TABLE IF EXISTS wallabago.users
-;
+DROP TABLE IF EXISTS app_users;

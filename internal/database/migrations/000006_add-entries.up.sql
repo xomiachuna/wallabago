@@ -1,11 +1,10 @@
-CREATE TABLE wallabago.entries (
-	entry_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-	owner_id TEXT NOT NULL REFERENCES wallabago.users (user_id),
+CREATE TABLE app_entries (
+	entry_id INTEGER PRIMARY KEY AUTOINCREMENT,
+	owner_id TEXT NOT NULL REFERENCES app_users (user_id),
 	title TEXT NOT NULL,
 	url TEXT NOT NULL,
-	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	retrieved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	created_at_unix INTEGER NOT NULL DEFAULT (unixepoch()),
+	retrieved_at_unix INTEGER DEFAULT (unixepoch()),
 	content TEXT NOT NULL,
-	sha1 BYTEA NOT NULL
-)
-;
+	sha1 BLOB NOT NULL
+) STRICT;

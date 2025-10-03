@@ -23,7 +23,7 @@ import (
 type Config struct {
 	Addr                   string
 	InstrumentationEnabled bool
-	DBConnectionString     string
+	DBPath                 string
 
 	BootstrapAdminEmail, BootstrapAdminUsername, BootstrapAdminPassword string
 	BootstrapClientID, BootstrapClientSecret                            string
@@ -48,15 +48,15 @@ func (w *Wallabago) Config() *Config {
 
 func NewWallabago(ctx context.Context, config *Config) (*Wallabago, error) {
 	// database
-	dbPool, err := database.NewDBPool(ctx, config.DBConnectionString)
+	dbPool, err := database.NewDBPool(ctx, config.DBPath)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	postgresStorage := storage.NewPostreSQLStorage(dbPool)
+	sqliteStorage := storage.NewSQLiteStorage(dbPool)
 	// engines
-	bootstrapEngine := engines.NewBoostrapEngine(postgresStorage)
+	bootstrapEngine := engines.NewBoostrapEngine(sqliteStorage)
 	// managers
-	boostrapManager := managers.NewBootstrapManager(postgresStorage, bootstrapEngine, core.BootstrapAdminCredentials{
+	boostrapManager := managers.NewBootstrapManager(sqliteStorage, bootstrapEngine, core.BootstrapAdminCredentials{
 		Username: config.BootstrapAdminUsername,
 		Password: config.BootstrapAdminPassword,
 		Email:    config.BootstrapAdminEmail,
@@ -64,10 +64,10 @@ func NewWallabago(ctx context.Context, config *Config) (*Wallabago, error) {
 		ID:     config.BootstrapClientID,
 		Secret: config.BootstrapClientSecret,
 	})
-	identityManager := managers.NewIdentityManager(postgresStorage)
+	identityManager := managers.NewIdentityManager(sqliteStorage)
 
 	authzEngine := engines.NewRBACAuthorizationEngine(
-		postgresStorage,
+		sqliteStorage,
 	)
 
 	retrievalEngine := engines.NewSimpleReadabilityRetrievalEngine(
@@ -76,7 +76,7 @@ func NewWallabago(ctx context.Context, config *Config) (*Wallabago, error) {
 
 	entryManager := managers.NewEntryManager(
 		authzEngine,
-		postgresStorage,
+		sqliteStorage,
 		retrievalEngine,
 	)
 

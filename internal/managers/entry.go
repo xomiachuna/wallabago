@@ -125,7 +125,7 @@ func (em *EntryManager) EntryExists(ctx context.Context, accessToken core.Access
 	return exists, nil
 }
 
-func (em *EntryManager) GetEntry(ctx context.Context, accessToken core.AccessToken, entryID int32) (*core.Entry, error) {
+func (em *EntryManager) GetEntry(ctx context.Context, accessToken core.AccessToken, entryID int64) (*core.Entry, error) {
 	tx, err := em.authz.Begin(ctx)
 	if err != nil {
 		return nil, errors.WithStack(err)
