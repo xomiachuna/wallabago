@@ -10,6 +10,8 @@ Influenced by [8. Use PostgreSQL database](0008-use-postgresql-database.md)
 
 Influences [10. Use golang-migrate for database migrations](0010-use-golang-migrate-for-database-migrations.md)
 
+Influences [12. Use SQLite Database](0012-use-sqlite-database.md)
+
 ## Context
 
 There are multiple approaches to writing applications that use a SQL database:

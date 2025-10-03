@@ -4,11 +4,11 @@ Date: 2025-07-18
 
 ## Status
 
-Accepted
-
 Influences [9. Use sqlc for database query codegen](0009-use-sqlc-for-database-query-codegen.md)
 
 Influences [10. Use golang-migrate for database migrations](0010-use-golang-migrate-for-database-migrations.md)
+
+Superceded by [12. Use SQLite Database](0012-use-sqlite-database.md)
 
 ## Context
 
