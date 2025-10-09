@@ -144,7 +144,6 @@ func (w *Wallabago) Handler() http.Handler {
 
 	globalMiddleware := middleware.NewChain(
 		middleware.LoggingMiddleware,
-		middleware.NewOtelHTTPMiddleware(),
 		middleware.PanicInterceptMiddleware,
 	)
 
