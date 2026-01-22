@@ -14,7 +14,6 @@ import (
 	"github.com/andriihomiak/wallabago/internal/http/handlers"
 	"github.com/andriihomiak/wallabago/internal/http/handlers/docs"
 	"github.com/andriihomiak/wallabago/internal/http/middleware"
-	"github.com/andriihomiak/wallabago/internal/instrumentation"
 	"github.com/andriihomiak/wallabago/internal/managers"
 	"github.com/andriihomiak/wallabago/internal/storage"
 	"github.com/pkg/errors"
@@ -114,15 +113,6 @@ func (w *Wallabago) Shutdown(shutdownCtx context.Context) error {
 }
 
 func (w *Wallabago) Prepare(ctx context.Context) error {
-	// otel
-	if w.config.InstrumentationEnabled {
-		shutdownOtel, err := instrumentation.SetupOtelSDK(ctx)
-		if err != nil {
-			return errors.Wrap(err, "Failed to setup otel")
-		}
-		w.shutdownOtel = shutdownOtel
-	}
-
 	// run bootstrap
 	err := w.bootstrap(ctx)
 	if err != nil {
@@ -154,7 +144,6 @@ func (w *Wallabago) Handler() http.Handler {
 
 	globalMiddleware := middleware.NewChain(
 		middleware.LoggingMiddleware,
-		middleware.NewOtelHTTPMiddleware(),
 		middleware.PanicInterceptMiddleware,
 	)
 
