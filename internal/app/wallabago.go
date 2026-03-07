@@ -32,6 +32,7 @@ type Config struct {
 type Wallabago struct {
 	identityManager  *managers.IdentityManager
 	bootstrapManager *managers.BootstrapManager
+	entryManager     *managers.EntryManager
 	config           *Config
 	dbPool           *sql.DB
 	shutdownOtel     func(context.Context) error
@@ -65,9 +66,24 @@ func NewWallabago(ctx context.Context, config *Config) (*Wallabago, error) {
 	})
 	identityManager := managers.NewIdentityManager(postgresStorage)
 
+	authzEngine := engines.NewRBACAuthorizationEngine(
+		postgresStorage,
+	)
+
+	retrievalEngine := engines.NewSimpleReadabilityRetrievalEngine(
+		"wallabago",
+	)
+
+	entryManager := managers.NewEntryManager(
+		authzEngine,
+		postgresStorage,
+		retrievalEngine,
+	)
+
 	return &Wallabago{
 		bootstrapManager: boostrapManager,
 		identityManager:  identityManager,
+		entryManager:     entryManager,
 		config:           config,
 		dbPool:           dbPool,
 		shutdownOtel: func(ctx context.Context) error {
@@ -107,7 +123,7 @@ func (w *Wallabago) Prepare(ctx context.Context) error {
 		w.shutdownOtel = shutdownOtel
 	}
 
-	// bootstrap
+	// run bootstrap
 	err := w.bootstrap(ctx)
 	if err != nil {
 		return errors.WithMessage(err, "Failed to perform bootstrap")
@@ -124,15 +140,19 @@ func (w *Wallabago) Handler() http.Handler {
 	mux.HandleFunc("POST /oauth/v2/token", oauth2.TokenEndpoint)
 
 	ui := handlers.NewWebUI()
-	api := handlers.NewAPI()
+	api := handlers.NewAPI(
+		w.entryManager,
+	)
 
-	mux.HandleFunc("/", ui.Index)
+	mux.HandleFunc("/{$}", ui.Index)
 	mux.Handle("/docs/", http.StripPrefix("/docs/", docs.OpenAPI))
-	mux.Handle("/protected", auth.Wrap(http.HandlerFunc(api.AuthInfo)))
+	mux.Handle("GET /api/entries/exists", auth.RequiredFor(api.HandleEntryExists))
+	mux.Handle("POST /api/entries", auth.RequiredFor(api.HandleAddEntry))
 
 	globalMiddleware := middleware.NewChain(
 		middleware.LoggingMiddleware,
 		middleware.NewOtelHTTPMiddleware(),
+		middleware.PanicInterceptMiddleware,
 	)
 
 	return globalMiddleware.Wrap(mux)

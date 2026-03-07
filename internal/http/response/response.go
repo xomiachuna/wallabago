@@ -25,14 +25,18 @@ func RespondJSON(w http.ResponseWriter, r *http.Request, body any, status int) {
 	w.Write(bodyContent)
 }
 
+type stackTracer interface {
+	StackTrace() errors.StackTrace
+}
+
 func RespondInternalErrorWithStack(w http.ResponseWriter, _ *http.Request, err error) {
-	w.Header().Set(constants.HeaderContentType, constants.MimeTextPlain)
-	w.WriteHeader(http.StatusInternalServerError)
-	fmt.Fprint(w, errors.WithStack(err))
+	if errWithStack, ok := err.(stackTracer); ok {
+		http.Error(w, fmt.Sprintf("error: %s\nstack:\n%+v", err.Error(), errWithStack.StackTrace()), http.StatusInternalServerError)
+	} else {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func RespondErrorPlain(w http.ResponseWriter, _ *http.Request, err error, status int) {
-	w.Header().Set(constants.HeaderContentType, constants.MimeTextPlain)
-	w.WriteHeader(status)
-	fmt.Fprint(w, err)
+	http.Error(w, err.Error(), status)
 }

@@ -14,6 +14,8 @@ import (
 )
 
 type OAuth2Middleware interface {
+	RequiredFor(handler func(http.ResponseWriter, *http.Request)) http.Handler
+
 	Middleware
 }
 
@@ -64,4 +66,8 @@ func (m *oAuth2Middleware) Wrap(handler http.Handler) http.Handler {
 		}
 		handler.ServeHTTP(w, m.withToken(r, accessToken))
 	})
+}
+
+func (m *oAuth2Middleware) RequiredFor(handler func(http.ResponseWriter, *http.Request)) http.Handler {
+	return WrapFunc(handler, m)
 }

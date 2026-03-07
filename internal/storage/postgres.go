@@ -3,6 +3,8 @@ package storage
 import (
 	"context"
 	"database/sql"
+	neturl "net/url"
+	"time"
 
 	"github.com/andriihomiak/wallabago/internal/core"
 	"github.com/andriihomiak/wallabago/internal/database"
@@ -239,4 +241,58 @@ func (s *PostgreSQLStorage) AddUser(ctx context.Context, tx *sql.Tx, user core.U
 		return errors.WithStack(err)
 	}
 	return nil
+}
+
+func (s *PostgreSQLStorage) AddEntry(ctx context.Context, tx *sql.Tx, entry core.Entry) (*core.Entry, error) {
+	q := s.queries.WithTx(tx)
+	result, err := q.AddEntry(ctx, database.AddEntryParams{
+		Url:     entry.URL.String(),
+		Title:   entry.Title,
+		OwnerID: entry.OwnerID,
+		Content: entry.Content,
+		Sha1:    entry.SHA1,
+	})
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	entry.ID = result.EntryID
+	return &entry, nil
+}
+
+func (s *PostgreSQLStorage) GetEntryBySHA1(ctx context.Context, tx *sql.Tx, sha1 []byte) (*core.Entry, error) {
+	q := s.queries.WithTx(tx)
+	entry, err := q.GetEntryBySHA1(ctx, sha1)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	url, err := neturl.Parse(entry.Url)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	var retrievedAt *time.Time
+	if entry.RetrievedAt.Valid {
+		retrievedAt = &entry.RetrievedAt.Time
+	}
+	return &core.Entry{
+		ID:          entry.EntryID,
+		URL:         *url,
+		Title:       entry.Title,
+		OwnerID:     entry.OwnerID,
+		Content:     entry.Content,
+		SHA1:        entry.Sha1,
+		CreatedAt:   entry.CreatedAt,
+		RetrievedAt: retrievedAt,
+	}, nil
+}
+
+func (s *PostgreSQLStorage) EntryExistsBySHA1(ctx context.Context, tx *sql.Tx, sha1 []byte) (bool, error) {
+	q := s.queries.WithTx(tx)
+	_, err := q.GetEntryBySHA1(ctx, sha1)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }

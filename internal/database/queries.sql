@@ -208,3 +208,37 @@ RETURNING
 	is_admin,
 	username
 ;
+
+-- name: AddEntry :one
+INSERT INTO
+	wallabago.entries (url, title, "content", owner_id, sha1)
+VALUES
+	($1, $2, $3, $4, $5)
+RETURNING
+	entry_id,
+	owner_id,
+	title,
+	url,
+	created_at,
+	retrieved_at,
+	sha1,
+	content
+;
+
+-- name: GetEntryBySHA1 :one
+SELECT
+	entry_id,
+	owner_id,
+	title,
+	url,
+	created_at,
+	retrieved_at,
+	sha1,
+	content
+FROM
+	wallabago.entries
+WHERE
+	sha1 = $1
+LIMIT
+	1
+;
