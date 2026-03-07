@@ -1,4 +1,4 @@
-# wallabago - an implementation of Wallabag in golang
+# wallabago - an study of volatility-based decomposition
 
 ## Development
 
